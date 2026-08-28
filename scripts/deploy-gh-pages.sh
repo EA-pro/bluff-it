@@ -49,6 +49,11 @@ PY
 # --- 3) SPA 404 fallback (refresh on subroutes)
 cp "$DIST/index.html" "$DIST/404.html"
 
+# --- 3b) Disable Jekyll — critical: bundles live in _expo/ and Jekyll
+#     silently drops any folder starting with an underscore, which made
+#     every JS file 404 on GitHub Pages.
+: > "$DIST/.nojekyll"
+
 echo "==> Verifying…"
 grep -q 'src="/_expo/' "$DIST/index.html" && { echo "ERROR: absolute /_expo/ refs remain"; exit 1; }
 for f in manifest.json apple-touch-icon.png 404.html index.html; do
