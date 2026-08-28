@@ -93,7 +93,7 @@ export default {
   round_n: 'ROUND {a}',
   round_of: 'ROUND {a}/{b}',
   ho_mole_title: '🕵️ WHO’S THE MOLE?',
-  ho_guess_title: '🤫 SECRET GUESS',
+  ho_guess_title: '🎯 YOUR BLUFF',
   ho_vote_title: '🗳️ YOUR PICK',
   ho_mole_hint: 'Accuse who you think is the Mole.\n(No peeking at your friends’ faces 😉)',
   ho_ready: '🙈 I’m ready — go!',
@@ -122,7 +122,7 @@ export default {
   too_smooth_sub: 'That number looks a bit TOO correct… try one more!',
   dup: 'Already submitted! 🔁',
   dup_sub: 'Someone already said that number — pick another!',
-  lock_in: '🔒 Lock it in',
+  lock_in: '🚀 Let’s go!',
 
   // ---------- reading ----------
   read_mole_badge: '🕵️ MOLE MODE',

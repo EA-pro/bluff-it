@@ -89,7 +89,7 @@ export default {
   too_smooth_sub: 'Die Zahl wirkt ZU korrekt… noch einen Versuch!',
   dup: 'Bereits eingereicht! 🔁',
   dup_sub: 'Jemand hat diese Zahl schon genannt — nimm eine andere!',
-  lock_in: '🔒 Einsperren',
+  lock_in: '🚀 Los!',
 
   read_mole_badge: '🕵️ MAULWURF-MODUS',
   read_same1: 'Alle bekommen gleich die ',
@@ -276,7 +276,7 @@ export default {
   round_n: 'RUNDE {a}',
   round_of: 'RUNDE {a}/{b}',
   ho_mole_title: '🕵️ WER IST DER MAULWURF?',
-  ho_guess_title: '🤫 GEHEIMER TIPP',
+  ho_guess_title: '🎯 DEIN BLUFF',
   ho_vote_title: '🗳️ DEINE WAHL',
   ho_mole_hint: 'Beschuldige, wer du für den Maulwurf hältst.\n(Nicht in die Gesichter der Freunde schauen 😉)',
   ho_ready: '🙈 Ich bin bereit — los!',

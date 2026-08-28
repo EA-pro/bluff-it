@@ -89,7 +89,7 @@ export default {
   too_smooth_sub: 'Dat getal is wat TE correct… nog een keer!',
   dup: 'Al ingediend! 🔁',
   dup_sub: 'Iemand zei al dat getal — kies er een ander!',
-  lock_in: '🔒 Vergrendel',
+  lock_in: '🚀 Gaan!',
 
   read_mole_badge: '🕵️ MOL-MODUS',
   read_same1: 'Iedereen gaat even de ',
@@ -276,7 +276,7 @@ export default {
   round_n: 'RONDE {a}',
   round_of: 'RONDE {a}/{b}',
   ho_mole_title: '🕵️ WIE IS DE MOL?',
-  ho_guess_title: '🤫 GEHEIME GOK',
+  ho_guess_title: '🎯 JE BLUF',
   ho_vote_title: '🗳️ JE KEUZE',
   ho_mole_hint: 'Beschuldig wie jij denkt dat de mol is.\n(Geelijkt niet naar je vriendjes 😉)',
   ho_ready: '🙈 Ik ben klaar — ga!',
