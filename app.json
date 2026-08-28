@@ -35,6 +35,7 @@
       ]
     ],
     "experiments": {
+      "baseUrl": "/bluff-it",
       "typedRoutes": true,
       "reactCompiler": true
     }
