@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useWallet } from '@/game/wallet';
 import { t } from '@/i18n';
 
 /**
@@ -18,7 +17,6 @@ const TABS: { id: TabId; icon: string; center?: boolean }[] = [
 ];
 
 export default function TabBar({ tab, onTab }: { tab: TabId; onTab: (t: TabId) => void }) {
-  const wallet = useWallet();
   return (
     <View style={styles.bar}>
       {TABS.map((tb) => {
@@ -40,11 +38,6 @@ export default function TabBar({ tab, onTab }: { tab: TabId; onTab: (t: TabId) =
           </Pressable>
         );
       })}
-      {/* live coin pill — tappable, jumps to the shop */}
-      <Pressable style={styles.coinPill} onPress={() => onTab('shop')} hitSlop={8}>
-        <Text style={styles.coinIcon}>🪙</Text>
-        <Text style={styles.coinTxt}>{wallet.coins.toLocaleString('en-US')}</Text>
-      </Pressable>
     </View>
   );
 }
@@ -94,20 +87,4 @@ const styles = StyleSheet.create({
   centerIcon: { fontSize: 28 },
   centerLabel: { fontSize: 9.5, fontWeight: '900', color: '#FFD84D', marginTop: 3, letterSpacing: 0.5 },
   centerLabelActive: { color: '#1B1F3B' },
-  coinPill: {
-    position: 'absolute',
-    top: -16,
-    right: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#FFD84D',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 3,
-    borderColor: '#1B1F3B',
-  },
-  coinIcon: { fontSize: 13 },
-  coinTxt: { fontSize: 13, fontWeight: '900', color: '#1B1F3B' },
 });

@@ -69,10 +69,10 @@ export default function Gate({ onUnlock }: { onUnlock: () => void }) {
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
       >
         <View style={styles.wrap}>
-          <Animated.View style={{ transform: [{ translateX }] }}>
+          <Animated.View style={{ transform: [{ translateX }], width: '100%' }}>
             <View style={styles.box}>
               <Text style={styles.lockIcon}>🔐</Text>
               <Text style={styles.title}>{t('gate_locked')}</Text>
@@ -91,6 +91,8 @@ export default function Gate({ onUnlock }: { onUnlock: () => void }) {
                 maxLength={12}
                 selectionColor={Palette.bubblegum}
                 onSubmitEditing={submit}
+                submitBehavior="submit"
+                returnKeyType="go"
               />
 
               {wrong ? (
