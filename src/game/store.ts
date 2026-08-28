@@ -73,7 +73,7 @@ function setEvent(e: string | null) { lastEvent = e; }
 export function addPlayer(name: string, avatarId: string, team: number) {
   if (state.players.length >= 6) return;
   const id = 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1000);
-  const p: Player = { id, name, avatarId, team, score: 0, bluffWins: 0, callWins: 0, biggestBluff: 0, fooledTotal: 0, moleWins: 0, huntWins: 0, moleFooledTotal: 0 };
+  const p: Player = { id, name, avatarId, team, score: 0, bluffWins: 0, callWins: 0, biggestBluff: 0, fooledTotal: 0, moleWins: 0, huntWins: 0, moleFooledTotal: 0, wordWins: 0, tasteWins: 0 };
   state = { ...state, players: [...state.players, p] };
   play('pop');
   emit();

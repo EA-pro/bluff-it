@@ -11,8 +11,8 @@ export type Phase =
   | 'result'     // answer revealed dramatically + points
   | 'end';       // podium + share card
 
-/** The two game modes, picked on the home screen. */
-export type GameMode = 'classic' | 'mole';
+/** The three game modes, picked on the home screen. */
+export type GameMode = 'classic' | 'mole' | 'words';
 
 /** What the next relay turn will be, shown on the handoff screen. */
 export type HandoffKind = 'guess' | 'vote' | 'molevote';
@@ -38,6 +38,8 @@ export interface Player {
   moleWins: number;     // mole mode: rounds as the Mole where you fooled ≥1 hunter
   huntWins: number;     // mole mode: times you correctly accused the Mole
   moleFooledTotal: number; // lifetime: hunters you (as Mole) convinced
+  wordWins: number;     // words mode: answers crowned "funniest"
+  tasteWins: number;    // words mode: times your vote landed on the crowned answer
 }
 
 export type QuestionType = 'numeric';
@@ -53,6 +55,10 @@ export interface Question {
   // numeric: the real answer players are estimating
   truth: number;
   unit?: string;
+  // words mode: the real (short written) answer, hidden as a board card
+  truthText?: string;
+  // words mode: personal = the target player's answer IS the truth; trivia = stored truthText
+  kind?: 'personal' | 'trivia';
   // which category pack this question belongs to (drives the free/paid picker)
   cat?: CategoryId;
 }
@@ -81,7 +87,9 @@ export interface RoundState {
   moleId?: string | null;          // mole mode: who's the Mole (secret until the result)
   guessOrder: string[];            // player ids, guess relay order
   guesses: Record<string, number | null>;
-  votes: Record<string, string | null>;       // classic: voter id -> option key
+  guessesText?: Record<string, string | null>; // words mode: written answers
+  wordsTargetId?: string | null;               // words mode: target player for personal questions (their answer is the truth)
+  votes: Record<string, string | null>;       // classic/words: voter id -> option key
   moleVotes?: Record<string, string | null>;  // mole: voter id -> accused playerId
   optionOrder: string[];           // shuffled option keys = the A,B,C… letters (stable across reveal+vote)
   revealed: boolean;

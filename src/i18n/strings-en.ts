@@ -158,8 +158,8 @@ export default {
   framed: '🎯 FRAMED',
 
   // ---------- anticipation ----------
-  ant_title: 'THE ANSWER SHOWS UP SOON…',
-  ant_sub: '🎬 hold on…',
+  ant_title: 'THE ANSWER…',
+  ant_sub: 'hold on…',
 
   // ---------- result ----------
   res_answer: '🎉 THE ANSWER WAS',
@@ -373,6 +373,7 @@ export default {
   next_round: 'Next round →',
   to_champ: 'To the champions 🏆',
   pt_exact: '+25 exact!',
+  pt_truth_vote: '+5 right answer',
   pt_fooled: '+{a} fooled {b}',
   pt_none: 'no points',
   reveal_title_classic: 'The guesses are in',

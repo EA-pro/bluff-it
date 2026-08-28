@@ -120,8 +120,8 @@ export default {
   mole_title: 'WER IST DER MAULWURF? 🕵️',
   framed: '🎯 BELEGT',
 
-  ant_title: 'DIE ANTWORT KOMMT BALD…',
-  ant_sub: '🎬 warten…',
+  ant_title: 'DIE ANTWORT…',
+  ant_sub: 'warten…',
 
   res_answer: '🎉 DIE ANTWORT WAR',
   res_nobody: '😬 niemand war nah dran — alle sind Legenden',
@@ -351,6 +351,7 @@ export default {
   next_round: 'Nächste Runde →',
   to_champ: 'Zu den Champions 🏆',
   pt_exact: '+25 exakt!',
+  pt_truth_vote: '+5 richtige Antwort',
   pt_fooled: '+{a} getäuscht {b}',
   pt_none: 'keine Punkte',
   reveal_title_classic: 'Die Tipps stehen fest',

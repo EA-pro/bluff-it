@@ -120,8 +120,8 @@ export default {
   mole_title: 'WIE IS DE MOL? 🕵️',
   framed: '🎯 BEKLEMD',
 
-  ant_title: 'HET ANTWOORD KOMT BINNEN…',
-  ant_sub: '🎬 even geduld…',
+  ant_title: 'HET ANTWOORD…',
+  ant_sub: 'even geduld…',
 
   res_answer: '🎉 HET ANTWOORD WAS',
   res_nobody: '😬 niemand kwam in de buurt — iedereen is een legende',
@@ -351,6 +351,7 @@ export default {
   next_round: 'Volgende ronde →',
   to_champ: 'Naar de kampioenen 🏆',
   pt_exact: '+25 exact!',
+  pt_truth_vote: '+5 juiste antwoord',
   pt_fooled: '+{a} gepakt {b}',
   pt_none: 'geen punten',
   reveal_title_classic: 'De gokken staan vast',

@@ -13,8 +13,6 @@ import { t } from '@/i18n';
 import { TRUTH_KEY } from '@/game/types';
 import type { MoleResult as MoleResultData, RoundState, Player } from '@/game/types';
 
-const LETTER_COLORS = ['#FF5A5F', '#38BDF8', '#FFC53D', '#7ED957', '#A78BFA', '#F472B6', '#2DD4BF', '#FF8A3D'];
-
 /** One answer in the stepped reveal: its value, who voted it, and (if a lie) who wrote it. */
 type Step = {
   key: string;
@@ -215,9 +213,6 @@ export default function Result() {
               }}
             >
               <View style={[styles.bigCard, showVerdict && cur.isTruth && styles.bigCardTruth]}>
-                <View style={[styles.bigLetter, { backgroundColor: LETTER_COLORS[step % LETTER_COLORS.length] }]}>
-                  <Text style={styles.bigLetterTxt}>{cur.letter}</Text>
-                </View>
                 <Text style={[styles.bigValue, compact && styles.bigValueSm]} numberOfLines={1} adjustsFontSizeToFit>
                   {cur.value.toLocaleString('en-US')}
                 </Text>
@@ -741,33 +736,19 @@ const styles = StyleSheet.create({
   bigCard: {
     backgroundColor: '#fff',
     borderRadius: Radius.lg,
-    borderWidth: 5,
+    borderWidth: 4,
     borderColor: '#1B1F3B',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 26,
-    paddingHorizontal: 30,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     gap: 2,
-    overflow: 'hidden',
-    minWidth: 240,
+    minWidth: 200,
     ...Shadow.pop,
   },
   bigCardTruth: { backgroundColor: '#F0FDF4', borderColor: '#1F7A2E' },
-  bigLetter: {
-    position: 'absolute',
-    top: -12,
-    left: -12,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 3.5,
-    borderColor: '#1B1F3B',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bigLetterTxt: { color: '#fff', fontSize: 22, fontWeight: '900' },
-  bigValue: { color: Palette.ink, fontSize: 74, fontWeight: '900', fontVariant: ['tabular-nums'], textAlign: 'center' },
-  bigValueSm: { fontSize: 56 },
+  bigValue: { color: Palette.ink, fontSize: 48, fontWeight: '900', fontVariant: ['tabular-nums'], textAlign: 'center' },
+  bigValueSm: { fontSize: 38 },
   bigUnit: { color: Palette.muted, fontSize: 15, fontWeight: '800' },
   votersLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '900', letterSpacing: 1.5, textAlign: 'center', marginBottom: 7 },
   votersRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 7, maxWidth: 340 },
