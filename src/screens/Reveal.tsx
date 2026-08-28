@@ -85,8 +85,27 @@ export default function Reveal() {
       .filter((c) => (isMole ? !c.isTruth : c.value != null));
   }, [round, players, isMole]);
 
-  // fluid grid: 3 columns on wide screens, 2 on phones — cards flex to fill
-  const columns = width >= 420 ? 3 : 2;
+  // fluid grid: pick the layout (2 or 3 columns) whose cards end up LARGEST,
+  // and derive an exact card HEIGHT from the window so the grid can never
+  // overflow into the question banner or the button below — on any phone.
+  const { height } = useWindowDimensions();
+  const qBannerEstimate = isMole ? 132 : 108; // label + 2-line question (+ mole note)
+  const reservedH = 118 + 64 + qBannerEstimate + 142; // top row + title/sub + qBanner + bottom
+  const layout = useMemo(() => {
+    const n = cards.length;
+    let best = { cols: 2, rows: 1, cardH: 120, cardW: 140 };
+    for (const cols of [2, 3]) {
+      const rows = Math.max(1, Math.ceil(n / cols));
+      const cardW = Math.floor((width - 28 - (cols - 1) * 10) / cols) - 10;
+      const availH = height - reservedH - (rows - 1) * 10;
+      let cardH = Math.floor(availH / rows) - 10;
+      cardH = Math.max(70, Math.min(cardH, 170));
+      const score = Math.min(cardH, cardW);
+      if (score > Math.min(best.cardH, best.cardW)) best = { cols, rows, cardH, cardW };
+    }
+    return best;
+  }, [cards.length, width, height, reservedH]);
+  const tight = layout.cardH < 96;
   const sm = width < 380;
 
   if (!round) return null;
@@ -131,8 +150,9 @@ export default function Reveal() {
               key={c.key}
               style={[
                 styles.cell,
-                { flexBasis: `${100 / columns}%` },
                 {
+                  flexBasis: `${100 / layout.cols}%`,
+                  height: layout.cardH + 10,
                   transform: [
                     { scale: bounceFor(c.key) },
                     { rotate: `${(c.key.charCodeAt(0) % 2 === 0 ? -1 : 1) * 0.8}deg` },
@@ -147,7 +167,7 @@ export default function Reveal() {
                 <Text style={[styles.value, { fontSize: sm ? 20 : 26 }]} numberOfLines={1} adjustsFontSizeToFit>
                   {c.value != null ? c.value.toLocaleString('en-US') : '—'}
                 </Text>
-                {c.unit && c.value != null ? (
+                {c.unit && c.value != null && !tight ? (
                   <Text style={styles.unitTxt}>{c.unit}</Text>
                 ) : null}
                 {/* mole mode: who wrote it is ALWAYS visible — it's the evidence */}
@@ -241,7 +261,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
     gap: 5,
-    minHeight: 118,
+    overflow: 'hidden',
     ...Shadow.pop,
   },
   letter: {

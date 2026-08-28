@@ -52,6 +52,13 @@ export const AVATARS = [
   premium: [5, 23, 28, 29, 30, 31].includes(i), // 🦄 🐲 🎮 🎧 🚀 💎
 }));
 
+// Eva & Jonas (the founders) lead the picker as free chibi Memoji faces —
+// AvatarFace renders their ex-* ids with the custom ChibiFace SVG.
+AVATARS.unshift(
+  { id: 'ex-eva', emoji: '💃', face: '#FFD1E0', shirt: '#FF5A5F', accent: '#151A2E', premium: false },
+  { id: 'ex-jonas', emoji: '🎤', face: '#C9D8FF', shirt: '#38BDF8', accent: '#151A2E', premium: false },
+);
+
 export const PREMIUM_AVATAR_IDS = new Set(
   AVATARS.filter((a) => a.premium).map((a) => a.id),
 );

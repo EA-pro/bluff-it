@@ -16,18 +16,28 @@ type Props = {
  *  so it always reads as a complete circle — never a floating inset ring. */
 export const TimerRing = memo(function TimerRing({ endsAt, totalSeconds, size = 58 }: Props) {
   const { remainingSec, progress, expired } = useCountdown(endsAt, totalSeconds);
-  // ring hugs the disc edge: stroke outer edge = disc outer edge - 1px
+  // The disc's 3.5px border sits INSIDE the View bounds, so an absolutely
+  // positioned SVG at top:0/left:0 starts at the padding box (border edge),
+  // not the visual disc center. Inset the SVG by the border width and size
+  // it to the content box so the ring and the centered number share the
+  // exact same center point.
+  const border = 3.5;
   const stroke = 5;
-  const r = size / 2 - stroke / 2 - 1;
+  const inner = size - border * 2;
+  const r = inner / 2 - stroke / 2 - 0.5;
   const c = 2 * Math.PI * r;
   const color = expired || progress < 0.25 ? Palette.coral : progress < 0.5 ? Palette.tangerine : Palette.lime;
   return (
     <View style={[styles.disc, { width: size, height: size }]}>
-      <Svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0 }}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(27,31,59,0.12)" strokeWidth={stroke} fill="none" />
+      <Svg
+        width={inner}
+        height={inner}
+        style={{ position: 'absolute', top: border, left: border }}
+      >
+        <Circle cx={inner / 2} cy={inner / 2} r={r} stroke="rgba(27,31,59,0.12)" strokeWidth={stroke} fill="none" />
         <Circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={inner / 2}
+          cy={inner / 2}
           r={r}
           stroke={color}
           strokeWidth={stroke}
@@ -35,7 +45,7 @@ export const TimerRing = memo(function TimerRing({ endsAt, totalSeconds, size = 
           strokeDasharray={c}
           strokeDashoffset={c * (1 - progress)}
           strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          transform={`rotate(-90 ${inner / 2} ${inner / 2})`}
         />
       </Svg>
       <Text style={[styles.num, { fontSize: size * 0.32, color: expired ? Palette.coral : Palette.ink }]}>

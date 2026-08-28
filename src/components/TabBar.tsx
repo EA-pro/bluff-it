@@ -5,16 +5,15 @@ import { t } from '@/i18n';
 
 /**
  * Clash-Royale-style bottom tab bar.
- * Five tabs, the center one (Home) is elevated with a raised coin-coin medallion.
- * Order:  🛒 Shop · 🎁 Loot Box · (🏠 HOME) · 📜 History · 👤 Profile
+ * Three tabs, the center one (Home) is elevated in a raised circle.
+ * Order:  🛒 Shop · (🏠 HOME) · 👤 Profile
+ * (Game history now lives inside the Profile page.)
  */
-export type TabId = 'shop' | 'gacha' | 'home' | 'history' | 'profile';
+export type TabId = 'shop' | 'home' | 'profile';
 
 const TABS: { id: TabId; icon: string; center?: boolean }[] = [
   { id: 'shop', icon: '🛒' },
-  { id: 'gacha', icon: '🎁' },
   { id: 'home', icon: '🏠', center: true },
-  { id: 'history', icon: '📜' },
   { id: 'profile', icon: '👤' },
 ];
 

@@ -11,7 +11,7 @@ import {
   AVATAR_PRICE, CAT_PRICE, isAvatarOwned,
   dailyAvailable, dailyAmountToday, dailyStreakToday, claimDaily,
 } from '@/game/wallet';
-import { AVATARS, EXCLUSIVE_AVATARS, isPremiumAvatar } from '@/game/avatars';
+import { AVATARS } from '@/game/avatars';
 import { CATEGORIES, FREE_CATEGORIES } from '@/game/deck';
 import { t } from '@/i18n';
 
@@ -132,22 +132,6 @@ export default function ShopTab() {
                   <Text style={styles.avPrice}>{AVATAR_PRICE} 🪙</Text>
                 )}
               </Pressable>
-            );
-          })}
-        </View>
-
-        {/* exclusive loot-box avatars — visible but only from the Loot Box */}
-        <View style={styles.exclRow}>
-          {EXCLUSIVE_AVATARS.map((e) => {
-            const owned = wallet.ownedAvatars.includes(e.id);
-            return (
-              <View key={e.id} style={[styles.exclCard, owned && styles.exclCardOwned]}>
-                <View style={[styles.exclBg, { backgroundColor: e.bg }]}>
-                  {owned ? <Text style={{ fontSize: 30 }}>{e.emoji}</Text> : <Text style={{ fontSize: 30 }}>❓</Text>}
-                </View>
-                <Text style={styles.exclName}>{owned ? e.name : t('gacha_excl_unk')}</Text>
-                <Text style={styles.exclTag}>{t('gacha_excl_fomo')}</Text>
-              </View>
             );
           })}
         </View>

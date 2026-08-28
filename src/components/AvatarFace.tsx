@@ -4,6 +4,7 @@ import { AVATARS, EXCLUSIVE_AVATARS } from '@/game/avatars';
 import { getBitmoji } from '@/game/bitmoji';
 import { getFaceEmoji } from '@/game/facepick';
 import BitmojiFace from '@/components/BitmojiFace';
+import ChibiFace from '@/components/ChibiFace';
 
 type Props = {
   avatarId: string;
@@ -43,6 +44,9 @@ export const AvatarFace = memo(function AvatarFace({ avatarId, size = 48 }: Prop
   if (bm) {
     return <BitmojiFace spec={bm} size={size} />;
   }
+  // Eva & Jonas get their own chibi Memoji-style faces
+  if (avatarId === 'ex-eva') return <ChibiFace who="eva" size={size} />;
+  if (avatarId === 'ex-jonas') return <ChibiFace who="jonas" size={size} />;
   const face = getFaceEmoji(avatarId);
   const exclusive = EXCLUSIVE_AVATARS.find((e) => e.id === avatarId);
   const emoji = face ? face.emoji : exclusive ? exclusive.emoji : AVATARS.find((a) => a.id === avatarId)?.emoji ?? '🎭';

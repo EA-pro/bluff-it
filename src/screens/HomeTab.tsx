@@ -14,9 +14,22 @@ import SettingsSheet from '@/components/SettingsSheet';
 import type { TabId } from '@/components/TabBar';
 import { t } from '@/i18n';
 
-const FLOATERS = ['🎲', '🤫', '🃏', '🤯', '👑', '💯', '🕵️', '🎯'];
+// Scattered, low-opacity confetti backdrop. Deterministic positions so it
+// looks designed, not random-glitch. (The old version had no left/top, so
+// every emoji stacked at the top-left corner.)
+const CONFETTI: { top: `${number}%`; left: `${number}%`; size: number; rot: number; emoji: string }[] = [
+  { top: '9%', left: '6%', size: 30, rot: -14, emoji: '🎲' },
+  { top: '7%', left: '78%', size: 34, rot: 12, emoji: '🃏' },
+  { top: '24%', left: '86%', size: 26, rot: -8, emoji: '🤯' },
+  { top: '33%', left: '4%', size: 24, rot: 10, emoji: '💯' },
+  { top: '52%', left: '90%', size: 30, rot: -16, emoji: '🎯' },
+  { top: '60%', left: '5%', size: 28, rot: 8, emoji: '🤫' },
+  { top: '76%', left: '84%', size: 32, rot: -10, emoji: '👑' },
+  { top: '86%', left: '10%', size: 26, rot: 14, emoji: '🕵️' },
+  { top: '93%', left: '60%', size: 24, rot: -6, emoji: '✨' },
+];
 
-/** HOME tab: daily bonus + coins, game-mode picker, PLAY NOW. */
+/** HOME tab: game-mode picker + PLAY NOW. */
 export default function HomeTab({ onTab }: { onTab: (t: TabId) => void }) {
   const { config } = useGame();
   const premium = usePremium();
@@ -25,21 +38,20 @@ export default function HomeTab({ onTab }: { onTab: (t: TabId) => void }) {
   const [adForMole, setAdForMole] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const pop = useRef(new Animated.Value(0)).current;
-  const float = useRef(new Animated.Value(0)).current;
+  const wave = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.spring(pop, { toValue: 1, tension: 40, friction: 7, useNativeDriver: true }).start();
     Animated.loop(
       Animated.sequence([
-        Animated.timing(float, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(float, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(wave, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(wave, { toValue: 0, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
     play('slide');
   }, []);
 
-  const y1 = float.interpolate({ inputRange: [0, 1], outputRange: [0, -14] });
-  const y2 = float.interpolate({ inputRange: [0, 1], outputRange: [0, 12] });
+  const drift = wave.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
 
   const hasMolePass = ads.molePassAvailable;
   const moleUsedToday = !premium.premium && !premium.admin && molePlayUsedToday();
@@ -61,68 +73,92 @@ export default function HomeTab({ onTab }: { onTab: (t: TabId) => void }) {
     goSetup();
   };
 
-  const onClaimDaily = () => {
-    onTab('shop');
-  };
-
   const scale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
 
   return (
     <LinearGradient colors={Gradients.home} style={styles.bg}>
-      <View style={styles.floaters} pointerEvents="none">
-        {FLOATERS.map((e, i) => (
-          <Animated.Text
+      {/* scattered confetti backdrop */}
+      <Animated.View pointerEvents="none" style={[styles.confetti, { transform: [{ translateY: drift }] }]}>
+        {CONFETTI.map((c, i) => (
+          <Text
             key={i}
-            style={[styles.floater, { transform: [{ translateY: i % 2 === 0 ? y1 : y2 }], opacity: 0.16 }]}
+            style={[
+              styles.confetto,
+              { top: c.top, left: c.left, fontSize: c.size, transform: [{ rotate: `${c.rot}deg` }] },
+            ]}
           >
-            {e}
-          </Animated.Text>
+            {c.emoji}
+          </Text>
         ))}
-      </View>
+      </Animated.View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* logo */}
-        <Animated.View style={{ transform: [{ scale }] }}>
-          <Text style={styles.logoShadow}>BLUFF IT</Text>
-          <Text style={styles.logo}>BLUFF IT</Text>
+        <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+          <View style={styles.logoWrap}>
+            <Text style={styles.logoShadow} pointerEvents="none">BLUFF IT</Text>
+            <Text style={styles.logo}>BLUFF IT</Text>
+          </View>
           <Text style={styles.tagline}>{t('home_tagline')}</Text>
         </Animated.View>
 
-        {/* shop hint — daily bonus + coins live in the shop now */}
-        <Pressable style={styles.shopHint} onPress={onClaimDaily} hitSlop={6}>
-          <Text style={styles.shopHintTxt}>🛒 {t('home_shop_hint')}</Text>
-        </Pressable>
-
-        {/* mode picker */}
-        <View style={styles.modeRow}>
+        {/* mode picker — big cards, each with its own vibe */}
+        <View style={styles.modeCol}>
           <Pressable
             style={[styles.modeCard, config.mode === 'classic' && styles.modeCardOn]}
             onPress={() => pickMode('classic')}
           >
-            <Text style={styles.modeEmoji}>🎲</Text>
-            <Text style={[styles.modeName, config.mode === 'classic' && styles.modeNameOn]}>{t('mode_classic')}</Text>
-            <Text style={styles.modeDesc}>{t('mode_classic_desc')}</Text>
+            <LinearGradient
+              colors={config.mode === 'classic' ? ['#FFE28A', '#FFB58A'] : ['rgba(255,255,255,0.35)', 'rgba(255,255,255,0.15)']}
+              style={styles.modeCardBg}
+            >
+              <View style={styles.modeLeft}>
+                <Text style={styles.modeEmoji}>🎲</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modeName, config.mode === 'classic' && styles.modeNameOn]}>{t('mode_classic')}</Text>
+                  <Text style={[styles.modeDesc, config.mode === 'classic' && styles.modeDescOn]}>{t('mode_classic_desc')}</Text>
+                  <Text style={styles.modeChip}>2–6 📱 · 1 phone</Text>
+                </View>
+              </View>
+              {config.mode === 'classic' ? (
+                <View style={[styles.modeBadge, styles.modeBadgeClassic]}>
+                  <Text style={styles.modeBadgeTxt}>✓</Text>
+                </View>
+              ) : null}
+            </LinearGradient>
           </Pressable>
+
           <Pressable
             style={[styles.modeCard, config.mode === 'mole' && styles.modeCardOn, moleLocked && styles.modeCardLocked]}
             onPress={() => pickMode('mole')}
           >
-            {moleLocked && <Text style={styles.modeLock}>🔒</Text>}
-            {hasMolePass && <Text style={styles.modeAdTag}>📺</Text>}
-            <Text style={styles.modeEmoji}>🕵️</Text>
-            <Text style={[styles.modeName, config.mode === 'mole' && styles.modeNameOn]}>{t('mode_mole')}</Text>
-            <Text style={styles.modeDesc}>{t('mode_mole_desc')}</Text>
+            <LinearGradient
+              colors={config.mode === 'mole' ? ['#C7D2FE', '#A78BFA'] : ['rgba(255,255,255,0.35)', 'rgba(255,255,255,0.15)']}
+              style={styles.modeCardBg}
+            >
+              <View style={styles.modeLeft}>
+                <Text style={styles.modeEmoji}>🕵️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modeName, config.mode === 'mole' && styles.modeNameOn]}>{t('mode_mole')}</Text>
+                  <Text style={[styles.modeDesc, config.mode === 'mole' && styles.modeDescOn]}>{t('mode_mole_desc')}</Text>
+                  <Text style={styles.modeChip}>🕵️ 1 of you is the Mole</Text>
+                </View>
+              </View>
+              <View style={styles.modeBadgeCol}>
+                {moleLocked && <Text style={styles.modeLock}>🔒</Text>}
+                {hasMolePass && <Text style={styles.modeAdTag}>📺</Text>}
+                {config.mode === 'mole' ? (
+                  <View style={[styles.modeBadge, styles.modeBadgeMole]}>
+                    <Text style={styles.modeBadgeTxt}>✓</Text>
+                  </View>
+                ) : null}
+              </View>
+            </LinearGradient>
           </Pressable>
         </View>
 
         <BigButton label={t('home_play_now')} onPress={playNow} variant="end" style={styles.playBtn} />
-
-        <View style={styles.hintCard}>
-          <Text style={styles.hintTitle}>📖 {t('home_how')}</Text>
-          <Text style={styles.hintRow}>1 · {t('home_rule1')}</Text>
-          <Text style={styles.hintRow}>2 · {t('home_rule2')}</Text>
-          <Text style={styles.hintRow}>3 · {t('home_rule3')}</Text>
-        </View>
+        <Text style={styles.foot}>{t('home_foot')}</Text>
 
         <Pressable style={styles.settingsBtn} onPress={() => setShowSettings(true)} hitSlop={6}>
           <Text style={styles.settingsTxt}>⚙️ {t('home_settings')}</Text>
@@ -161,58 +197,65 @@ export default function HomeTab({ onTab }: { onTab: (t: TabId) => void }) {
 const styles = StyleSheet.create({
   bg: { flex: 1, paddingBottom: 92 },
   content: { padding: 20, alignItems: 'center' },
-  floaters: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  floater: { position: 'absolute', fontSize: 34 },
-  logoShadow: { fontSize: 56, fontWeight: '900', color: 'rgba(0,0,0,0.25)', marginTop: 18, marginBottom: -8, transform: [{ skewX: '-6deg' }] },
-  logo: { fontSize: 56, fontWeight: '900', color: '#fff', textShadowColor: 'rgba(0,0,0,0.3)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 4 }, transform: [{ skewX: '-6deg' }], letterSpacing: 2 },
+  confetti: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.16 },
+  confetto: { position: 'absolute' },
+  logoWrap: { position: 'relative' },
+  logoShadow: { position: 'absolute', top: 5, right: -5, fontSize: 56, fontWeight: '900', color: 'rgba(120,15,30,0.9)', transform: [{ skewX: '-6deg' }], letterSpacing: 2 },
+  logo: { fontSize: 56, fontWeight: '900', color: '#fff', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 6, textShadowOffset: { width: 0, height: 3 }, transform: [{ skewX: '-6deg' }], letterSpacing: 2 },
   tagline: { color: 'rgba(255,255,255,0.85)', fontWeight: '800', fontSize: 13, marginTop: 4 },
-  shopHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    alignSelf: 'center',
-    marginTop: 14,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    borderWidth: 3,
-    borderColor: 'rgba(27,31,59,0.35)',
-  },
-  shopHintTxt: { fontSize: 12.5, fontWeight: '900', color: Palette.ink },
-  modeRow: { flexDirection: 'row', gap: 12, width: '100%', marginTop: 18 },
+  modeCol: { width: '100%', marginTop: 20, gap: 14 },
   modeCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    width: '100%',
     borderRadius: Radius.lg,
     borderWidth: 4,
     borderColor: 'rgba(27,31,59,0.35)',
-    padding: 14,
-    alignItems: 'center',
-    position: 'relative',
+    overflow: 'hidden',
   },
-  modeCardOn: { backgroundColor: '#fff', borderColor: '#1B1F3B', ...Shadow.pop },
-  modeCardLocked: { opacity: 0.75 },
-  modeLock: { position: 'absolute', top: -8, right: -8, fontSize: 18, backgroundColor: '#fff', borderRadius: 10, borderWidth: 2, borderColor: '#1B1F3B', padding: 3 },
-  modeAdTag: { position: 'absolute', top: -8, right: -8, fontSize: 16, backgroundColor: '#fff', borderRadius: 10, borderWidth: 2, borderColor: '#1B1F3B', padding: 3 },
-  modeEmoji: { fontSize: 34 },
-  modeName: { fontSize: 16, fontWeight: '900', color: Palette.ink, marginTop: 4, textTransform: 'uppercase' },
+  modeCardOn: {
+    borderColor: '#1B1F3B',
+    ...Shadow.pop,
+    transform: [{ scale: 1.01 }],
+  },
+  modeCardLocked: { opacity: 0.8 },
+  modeCardBg: { width: '100%' },
+  modeLeft: { flexDirection: 'row', alignItems: 'flex-start', padding: 16, gap: 14 },
+  modeEmoji: { fontSize: 42, width: 52, textAlign: 'center', marginTop: 2 },
+  modeName: { fontSize: 20, fontWeight: '900', color: Palette.ink, textTransform: 'uppercase', letterSpacing: 1 },
   modeNameOn: { color: '#1B1F3B' },
-  modeDesc: { fontSize: 10.5, fontWeight: '700', color: Palette.muted, textAlign: 'center', marginTop: 3, lineHeight: 14 },
-  playBtn: { width: '100%', marginTop: 22, height: 64, borderRadius: 20 },
-  hintCard: {
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderRadius: Radius.lg,
-    borderWidth: 3,
+  modeDesc: { fontSize: 12, fontWeight: '700', color: 'rgba(27,31,59,0.7)', marginTop: 4, lineHeight: 17 },
+  modeDescOn: { color: 'rgba(27,31,59,0.85)' },
+  modeChip: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    fontSize: 10,
+    fontWeight: '900',
+    color: Palette.ink,
+    borderWidth: 2,
     borderColor: 'rgba(27,31,59,0.25)',
-    padding: 14,
-    marginTop: 18,
   },
-  hintTitle: { fontSize: 13, fontWeight: '900', color: Palette.ink, marginBottom: 8 },
-  hintRow: { fontSize: 11.5, fontWeight: '700', color: 'rgba(27,31,59,0.75)', marginBottom: 5, lineHeight: 16 },
+  modeBadgeCol: { position: 'absolute', top: 10, right: 12, alignItems: 'center', gap: 6 },
+  modeBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#1B1F3B',
+  },
+  modeBadgeClassic: { backgroundColor: '#FFC53D' },
+  modeBadgeMole: { backgroundColor: '#A78BFA' },
+  modeBadgeTxt: { fontSize: 15, fontWeight: '900', color: '#1B1F3B', marginTop: -1 },
+  modeLock: { fontSize: 20, backgroundColor: '#fff', borderRadius: 10, borderWidth: 2, borderColor: '#1B1F3B', padding: 3 },
+  modeAdTag: { fontSize: 16, backgroundColor: '#fff', borderRadius: 10, borderWidth: 2, borderColor: '#1B1F3B', padding: 3 },
+  playBtn: { width: '100%', marginTop: 22, height: 66, borderRadius: 22 },
+  foot: { marginTop: 12, fontSize: 11.5, fontWeight: '800', color: 'rgba(255,255,255,0.85)' },
   settingsBtn: {
-    marginTop: 14,
+    marginTop: 16,
     backgroundColor: 'rgba(255,255,255,0.7)',
     borderRadius: 999,
     paddingHorizontal: 18,

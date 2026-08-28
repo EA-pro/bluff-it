@@ -1,27 +1,63 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, ScrollView } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, Easing, ScrollView, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import BigButton from '@/components/BigButton';
 import AvatarFace from '@/components/AvatarFace';
 import Confetti from '@/components/Confetti';
 import { useGame } from '@/game/useStore';
 import { resultContinue } from '@/game/store';
+import { optionLetter } from '@/game/engine';
 import { play } from '@/game/sound';
 import { Palette, Radius, Shadow, Gradients } from '@/constants/theme';
 import { t } from '@/i18n';
+import { TRUTH_KEY } from '@/game/types';
 import type { MoleResult as MoleResultData, RoundState, Player } from '@/game/types';
 
+const LETTER_COLORS = ['#FF5A5F', '#38BDF8', '#FFC53D', '#7ED957', '#A78BFA', '#F472B6', '#2DD4BF', '#FF8A3D'];
+
+/** One answer in the stepped reveal: its value, who voted it, and (if a lie) who wrote it. */
+type Step = {
+  key: string;
+  letter: string;
+  value: number;
+  isTruth: boolean;
+  voters: Player[];
+  author: Player | null;
+};
+
 /**
- * The verdict, in two beats:
- *  1) the truth + who guessed WHAT and who fooled WHOM (no points yet)
- *  2) the points fly in — so the "story" lands before the scoreboard.
- * No auto-advance — tap to continue.
+ * The verdict, in a stepped "answer show" (Jackbox-style), then the scoreboard:
+ *
+ *  STEPS — every option that got at least one vote, lies first (most votes
+ *  first), the truth always last; 0-vote options are skipped. Each step
+ *  unfolds in three beats: (1) the answer big on screen, (2) who voted for
+ *  it, (3) the verdict — A LIE (and who made it up) or THE TRUTH.
+ *  Tapping skips a beat, then advances.
+ *
+ *  SCORES — the old two-beat scoreboard (truth anchor → who said what →
+ *  points fly in), minus the %-off numbers.
+ *
+ * No auto-advance between steps — the group drives the pace.
  */
 export default function Result() {
   const game = useGame();
   const { round, players, result, roundIndex, config } = game;
   const isLast = roundIndex + 1 >= config.rounds;
+  const { height: winH } = useWindowDimensions();
+  const compact = winH < 760;
 
+  // ---------- stepped reveal state ----------
+  const [phase, setPhase] = useState<'steps' | 'scores'>('steps');
+  const [step, setStep] = useState(0);
+  const [showVerdict, setShowVerdict] = useState(false);
+  const cardIn = useRef(new Animated.Value(0)).current;
+  const votersIn = useRef(new Animated.Value(0)).current;
+  const verdictIn = useRef(new Animated.Value(0)).current;
+  const votersShown = useRef(false);
+  const verdictShown = useRef(false);
+  const revToken = useRef(0);
+
+  // ---------- scores state ----------
   const [showBoard, setShowBoard] = useState(false);
   const [showPts, setShowPts] = useState(false);
   const popIn = useRef(new Animated.Value(0)).current;
@@ -29,8 +65,78 @@ export default function Result() {
   const ptsIn = useRef(new Animated.Value(0)).current;
   const burst = useRef(0);
 
+  /** Lies (≥1 vote, most votes first), then the truth — always. 0-vote lies skipped. */
+  const steps: Step[] = useMemo(() => {
+    if (!round || result?.mole) return [];
+    const truthValue = round.question.truth ?? 0;
+    const mk = (key: string): Step | null => {
+      const i = round.optionOrder.indexOf(key);
+      const value = key === TRUTH_KEY ? truthValue : (round.guesses[key] ?? null);
+      if (value == null || i < 0) return null;
+      return {
+        key,
+        letter: optionLetter(i),
+        value,
+        isTruth: key === TRUTH_KEY,
+        voters: players.filter((p) => round.votes[p.id] === key),
+        author: key === TRUTH_KEY ? null : players.find((p) => p.id === key) ?? null,
+      };
+    };
+    const lies = round.optionOrder
+      .filter((k) => k !== TRUTH_KEY)
+      .map(mk)
+      .filter((s): s is Step => s !== null && s.voters.length > 0)
+      .sort((a, b) => b.voters.length - a.voters.length);
+    const truthStep = mk(TRUTH_KEY);
+    return [...lies, ...(truthStep ? [truthStep] : [])];
+  }, [round, players, result]);
+
+  const cur: Step | undefined = steps[step];
+
+  const revealVerdict = () => {
+    if (verdictShown.current) return;
+    verdictShown.current = true;
+    if (cur?.isTruth) {
+      burst.current += 1;
+      play('win');
+    } else {
+      play('pop');
+    }
+    Animated.spring(verdictIn, { toValue: 1, tension: 170, friction: 6, useNativeDriver: true }).start();
+    setShowVerdict(true);
+  };
+
+  // step choreography: card pops in → voters slide in → verdict lands
   useEffect(() => {
-    if (result?.mole) return; // mole rounds have their own choreography
+    if (phase !== 'steps') return;
+    const token = ++revToken.current;
+    cardIn.setValue(0);
+    votersIn.setValue(0);
+    verdictIn.setValue(0);
+    votersShown.current = false;
+    verdictShown.current = false;
+    setShowVerdict(false);
+    Animated.spring(cardIn, { toValue: 1, tension: 150, friction: 7, useNativeDriver: true }).start();
+    const t1 = setTimeout(() => {
+      if (revToken.current !== token || votersShown.current) return;
+      votersShown.current = true;
+      play('whoosh');
+      Animated.timing(votersIn, { toValue: 1, duration: 350, useNativeDriver: true }).start();
+    }, 950);
+    const t2 = setTimeout(() => {
+      if (revToken.current !== token || verdictShown.current) return;
+      revealVerdict();
+    }, 2300);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, step]);
+
+  // scores choreography (two beats, unchanged pacing)
+  useEffect(() => {
+    if (phase !== 'scores') return;
     Animated.timing(popIn, { toValue: 1, duration: 450, easing: Easing.out(Easing.back(1.7)), useNativeDriver: true }).start();
     const board = setTimeout(() => {
       setShowBoard(true);
@@ -49,7 +155,7 @@ export default function Result() {
       clearTimeout(pts);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [phase]);
 
   const revealPts = () => {
     if (showPts) return;
@@ -65,6 +171,142 @@ export default function Result() {
     return <MoleResult result={result} round={round} players={players} isLast={isLast} />;
   }
 
+  // ================= STEPPED REVEAL =================
+  if (phase === 'steps') {
+    return (
+      <LinearGradient colors={Gradients.result} style={styles.bg}>
+        <Confetti trigger={burst.current} height={220} />
+
+        <View style={styles.stepTop}>
+          <View style={styles.stepPill}>
+            <Text style={styles.stepPillTxt}>
+              {t('res_reveal_label')} · {roundIndex + 1}/{config.rounds}
+            </Text>
+          </View>
+          <View style={styles.dots}>
+            {steps.map((s, i) => (
+              <View
+                key={s.key}
+                style={[styles.dot, i === step && styles.dotActive, i < step && styles.dotDone]}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.qBannerMini}>
+          <Text style={styles.qBannerMiniLabel}>{t('reveal_q')}</Text>
+          <Text style={styles.qBannerMiniTxt} numberOfLines={2} adjustsFontSizeToFit>
+            {round.question.text} {round.question.unit ? `(${round.question.unit})` : ''}
+          </Text>
+        </View>
+
+        {cur ? (
+          <View style={styles.stepArea}>
+            <Text style={styles.stepLabel}>{t('res_step_of', { a: step + 1, b: steps.length })}</Text>
+
+            {/* beat 1 — the answer, big */}
+            <Animated.View
+              style={{
+                opacity: cardIn,
+                transform: [
+                  { scale: cardIn },
+                  { rotate: `${(cur.key.charCodeAt(0) % 2 === 0 ? -1 : 1) * 0.6}deg` },
+                ],
+              }}
+            >
+              <View style={[styles.bigCard, showVerdict && cur.isTruth && styles.bigCardTruth]}>
+                <View style={[styles.bigLetter, { backgroundColor: LETTER_COLORS[step % LETTER_COLORS.length] }]}>
+                  <Text style={styles.bigLetterTxt}>{cur.letter}</Text>
+                </View>
+                <Text style={[styles.bigValue, compact && styles.bigValueSm]} numberOfLines={1} adjustsFontSizeToFit>
+                  {cur.value.toLocaleString('en-US')}
+                </Text>
+                {round.question.unit ? <Text style={styles.bigUnit}>{round.question.unit}</Text> : null}
+              </View>
+            </Animated.View>
+
+            {/* beat 2 — who voted for it */}
+            <Animated.View
+              style={{
+                opacity: votersIn,
+                transform: [{ translateY: votersIn.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+              }}
+            >
+              {cur.voters.length > 0 ? (
+                <View>
+                  <Text style={styles.votersLabel}>{t('res_who_voted')}</Text>
+                  <View style={styles.votersRow}>
+                    {cur.voters.map((p) => (
+                      <View key={p.id} style={styles.voterChip}>
+                        <AvatarFace avatarId={p.avatarId} size={22} />
+                        <Text style={styles.voterName} numberOfLines={1}>
+                          {p.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.nobodyPicked}>{t('res_nobody_picked')}</Text>
+              )}
+            </Animated.View>
+
+            {/* beat 3 — the verdict */}
+            {showVerdict ? (
+              <Animated.View
+                style={[
+                  styles.verdict,
+                  cur.isTruth ? styles.verdictTruth : styles.verdictLie,
+                  {
+                    opacity: verdictIn,
+                    transform: [{ scale: verdictIn.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
+                  },
+                ]}
+              >
+                <Text style={styles.verdictEmoji}>{cur.isTruth ? '✅' : '🎭'}</Text>
+                <View style={styles.verdictMid}>
+                  <Text style={[styles.verdictTitle, cur.isTruth ? styles.verdictTitleTruth : styles.verdictTitleLie]}>
+                    {cur.isTruth ? t('res_truth_verdict') : t('res_lie')}
+                  </Text>
+                  <Text style={[styles.verdictSub, cur.isTruth && styles.verdictSubTruth]}>
+                    {cur.isTruth ? t('res_truth_was') : cur.author ? t('res_lie_by', cur.author.name) : ''}
+                  </Text>
+                </View>
+              </Animated.View>
+            ) : null}
+          </View>
+        ) : null}
+
+        <View style={styles.stepsBottom}>
+          <BigButton
+            label={
+              !showVerdict
+                ? t('res_skip')
+                : step + 1 < steps.length
+                  ? t('res_next_answer')
+                  : t('res_to_scores')
+            }
+            onPress={() => {
+              if (!showVerdict) {
+                revealVerdict();
+                return;
+              }
+              if (step + 1 < steps.length) {
+                play('slide');
+                setStep(step + 1);
+              } else {
+                play('slide');
+                setPhase('scores');
+              }
+            }}
+            variant="win"
+          />
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  // ================= SCOREBOARD =================
   const byPts = [...players].sort((a, b) => {
     const ra = result.rows.find((r) => r.playerId === a.id)?.pts ?? 0;
     const rb = result.rows.find((r) => r.playerId === b.id)?.pts ?? 0;
@@ -140,11 +382,6 @@ export default function Result() {
                         {p.name} <Text style={styles.rowGuess}>· {row.guess != null ? row.guess.toLocaleString('en-US') : t('no_guess')}</Text>
                       </Text>
                       <View style={styles.rowTags}>
-                        {row.guess != null && (
-                          <Text style={[styles.rowTag, row.distPct < 25 && styles.rowTagWin]}>
-                            {t('off_pct', Math.round(row.distPct))}
-                          </Text>
-                        )}
                         {result.exactIds.includes(p.id) && <Text style={[styles.rowTag, styles.rowTagWin]}>{t('exact')}</Text>}
                         {fooledNames.length > 0 && (
                           <Text style={styles.foolTag} numberOfLines={1}>
@@ -469,6 +706,106 @@ const styles = StyleSheet.create({
   badgeTxt: { color: '#fff', fontSize: 13, fontWeight: '800', marginTop: 2 },
   btnRow: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 18 },
   btn: { marginBottom: 4 },
+  // --- stepped reveal ---
+  stepTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingHorizontal: 22 },
+  stepPill: {
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 3,
+    borderColor: '#1B1F3B',
+    ...Shadow.pop,
+  },
+  stepPillTxt: { color: Palette.ink, fontWeight: '900', fontSize: 12, letterSpacing: 1 },
+  dots: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.4)', borderWidth: 2, borderColor: 'rgba(27,31,59,0.5)' },
+  dotActive: { backgroundColor: '#FFC53D', transform: [{ scale: 1.35 }] },
+  dotDone: { backgroundColor: '#7ED957' },
+  qBannerMini: {
+    alignSelf: 'center',
+    marginHorizontal: 18,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderRadius: 14,
+    borderWidth: 3,
+    borderColor: '#1B1F3B',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 2,
+    ...Shadow.pop,
+  },
+  qBannerMiniLabel: { alignSelf: 'center', fontSize: 9, fontWeight: '900', letterSpacing: 2, color: Palette.muted },
+  qBannerMiniTxt: { color: Palette.ink, fontSize: 13, fontWeight: '900', textAlign: 'center', lineHeight: 17 },
+  stepArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 18, paddingTop: 8 },
+  stepLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '900', letterSpacing: 2 },
+  bigCard: {
+    backgroundColor: '#fff',
+    borderRadius: Radius.lg,
+    borderWidth: 5,
+    borderColor: '#1B1F3B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 26,
+    paddingHorizontal: 30,
+    gap: 2,
+    overflow: 'hidden',
+    minWidth: 240,
+    ...Shadow.pop,
+  },
+  bigCardTruth: { backgroundColor: '#F0FDF4', borderColor: '#1F7A2E' },
+  bigLetter: {
+    position: 'absolute',
+    top: -12,
+    left: -12,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 3.5,
+    borderColor: '#1B1F3B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bigLetterTxt: { color: '#fff', fontSize: 22, fontWeight: '900' },
+  bigValue: { color: Palette.ink, fontSize: 74, fontWeight: '900', fontVariant: ['tabular-nums'], textAlign: 'center' },
+  bigValueSm: { fontSize: 56 },
+  bigUnit: { color: Palette.muted, fontSize: 15, fontWeight: '800' },
+  votersLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '900', letterSpacing: 1.5, textAlign: 'center', marginBottom: 7 },
+  votersRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 7, maxWidth: 340 },
+  voterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    paddingLeft: 5,
+    paddingRight: 10,
+    paddingVertical: 4,
+    borderWidth: 2.5,
+    borderColor: '#1B1F3B',
+    ...Shadow.pop,
+  },
+  voterName: { color: Palette.ink, fontSize: 12, fontWeight: '900', maxWidth: 84 },
+  nobodyPicked: { color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '800', fontStyle: 'italic', textAlign: 'center' },
+  verdict: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    alignSelf: 'stretch',
+    borderRadius: Radius.md,
+    borderWidth: 4,
+    padding: 14,
+    ...Shadow.pop,
+  },
+  verdictTruth: { backgroundColor: '#1F7A2E', borderColor: '#0E4F1D' },
+  verdictLie: { backgroundColor: '#DC2626', borderColor: '#7F1D1D' },
+  verdictEmoji: { fontSize: 26 },
+  verdictMid: { flex: 1, gap: 1 },
+  verdictTitle: { fontSize: 20, fontWeight: '900', letterSpacing: 1 },
+  verdictTitleTruth: { color: '#D9F99D' },
+  verdictTitleLie: { color: '#FECACA' },
+  verdictSub: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  verdictSubTruth: { color: '#EAFBEF' },
+  stepsBottom: { padding: 16, paddingBottom: 30 },
   // --- mole mode ---
   moleCard: { gap: 6 },
   moleWho: { flexDirection: 'row', alignItems: 'center', gap: 10 },

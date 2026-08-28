@@ -1,4 +1,9 @@
-"""Generate tiny 16-bit mono WAV sound effects for BLUFF IT (procedural, no assets)."""
+"""Generate tiny 16-bit mono WAV sound effects for BLUFF IT (procedural, no assets).
+
+v2 — "less ringly": warmer sine/marimba palette instead of bright triangle
+arps, slower note density, softer attacks, rounded high end. SFX are shorter
+and rounder.
+"""
 import math, struct, wave, os
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'assets', 'sounds')
@@ -6,7 +11,7 @@ os.makedirs(OUT, exist_ok=True)
 
 RATE = 22050
 
-def env_ad(n, attack=0.01, decay=None):
+def env_ad(n, attack=0.008, decay=None):
     decay = decay or (n / RATE)
     a = max(1, int(attack * RATE))
     d = max(1, int(decay * RATE))
@@ -30,9 +35,9 @@ def write_wav(name, samples):
         w.writeframes(frames)
     print(f'{name}: {len(samples)/RATE:.2f}s')
 
-def tone(freq, dur, kind='sine', glide=None, vol=1.0):
+def note(freq, dur, kind='sine', glide=None, vol=1.0, attack=0.008):
     n = int(dur * RATE)
-    e = env_ad(n)
+    e = env_ad(n, attack=attack)
     out = []
     for i in range(n):
         t = i / RATE
@@ -41,11 +46,11 @@ def tone(freq, dur, kind='sine', glide=None, vol=1.0):
         v = 0.0
         if kind == 'sine':
             v = math.sin(p)
-        elif kind == 'square':
-            v = 1.0 if math.sin(p) >= 0 else -1.0
-            v *= 0.5
+        elif kind == 'warm':
+            # sine + a little 2nd harmonic = rounded "marimba" body, no harsh edge
+            v = math.sin(p) + 0.25 * math.sin(2 * p)
         elif kind == 'triangle':
-            v = 2 / math.pi * (2 * math.asin(math.sin(p)) )
+            v = 2 / math.pi * (2 * math.asin(math.sin(p)))
         elif kind == 'noise':
             import random
             v = random.uniform(-1, 1)
@@ -55,42 +60,49 @@ def tone(freq, dur, kind='sine', glide=None, vol=1.0):
 def seq(*chunks):
     return [s for c in chunks for s in c]
 
-# pop — tap confirm
-write_wav('pop.wav', tone(520, 0.09, 'triangle', 880, 0.9))
-# tick — countdown / timer pulse
-write_wav('tick.wav', tone(950, 0.05, 'square', 900, 0.35))
-# whoosh — screen transition
+# pop — round tap confirm (sine, soft pitch lift, no edge)
+write_wav('pop.wav', note(420, 0.10, 'warm', 620, 0.9))
+# tick — soft rounded pulse instead of a square-wave zap
+write_wav('tick.wav', note(740, 0.05, 'sine', 700, 0.35))
+# whoosh — softer filtered sweep
 n = int(0.22 * RATE)
-write_wav('whoosh.wav', [
-    (1 if (i // 3) % 2 == 0 else -1) * 0.3 * (1 - i / n) * math.sin(2*math.pi*(300+1200*i/n)*i/RATE)
-    for i in range(n)
-])
-# reveal — big answer flip
+whoosh = []
+for i in range(n):
+    t = i / RATE
+    env = (1 - i / n)
+    f = 220 + 700 * (i / n)
+    whoosh.append(math.sin(2 * math.pi * f * t) * 0.5 * env)
+write_wav('whoosh.wav', whoosh)
+# reveal — warm rising triad, slow attack (pizzicato feel, no ringing)
 write_wav('reveal.wav', seq(
-    tone(392, 0.08, 'triangle', vol=0.8),
-    tone(523, 0.08, 'triangle', vol=0.8),
-    tone(659, 0.16, 'triangle', vol=0.9),
+    note(330, 0.09, 'warm', vol=0.8, attack=0.012),
+    note(440, 0.09, 'warm', vol=0.8, attack=0.012),
+    note(554, 0.18, 'warm', vol=0.9, attack=0.012),
 ))
-# win — happy arpeggio
+# win — warm happy arpeggio, longer final note with soft decay
 write_wav('win.wav', seq(
-    tone(523, 0.09, 'triangle', vol=0.8),
-    tone(659, 0.09, 'triangle', vol=0.8),
-    tone(784, 0.09, 'triangle', vol=0.8),
-    tone(1047, 0.30, 'triangle', vol=0.9),
+    note(440, 0.10, 'warm', vol=0.8),
+    note(554, 0.10, 'warm', vol=0.8),
+    note(660, 0.10, 'warm', vol=0.8),
+    note(880, 0.34, 'warm', vol=0.9),
 ))
-# oops — wrong / bluff caught
+# oops — low, soft two-note dip
 write_wav('oops.wav', seq(
-    tone(330, 0.10, 'saw' if False else 'triangle', vol=0.7),
-    tone(247, 0.22, 'triangle', vol=0.7),
+    note(294, 0.11, 'warm', vol=0.7),
+    note(220, 0.24, 'warm', vol=0.7),
 ))
-# slide — page turn in avatar picker
-write_wav('slide.wav', tone(300, 0.12, 'sine', 620, 0.5))
-# buzz — wrong verdict (low, short)
-write_wav('buzz.wav', seq(tone(140, 0.06, 'square', vol=0.5), tone(140, 0.06, 'square', vol=0.5), tone(140, 0.12, 'square', vol=0.45)))
+# slide — gentle page turn
+write_wav('slide.wav', note(260, 0.13, 'sine', 480, 0.45))
+# buzz — rounder "blop" (sine pulses, not square)
+write_wav('buzz.wav', seq(
+    note(150, 0.07, 'warm', vol=0.6),
+    note(150, 0.07, 'warm', vol=0.6),
+    note(130, 0.12, 'warm', vol=0.55),
+))
 
-# ================= BACKGROUND MUSIC (seamless 8-beat loops @ 120 BPM) =================
-BEAT = 0.5            # 120 BPM
-LOOP = BEAT * 8       # 8 beats -> seamless loop (all notes decay before the end)
+# ================= BACKGROUND MUSIC (seamless 8-beat loops @ 112 BPM) =================
+BEAT = 60 / 112 / 1          # 112 BPM quarter note
+LOOP = BEAT * 8              # 8 beats, all notes decay before the end
 
 def mix(*layers):
     n = max(len(l) for l in layers)
@@ -100,8 +112,8 @@ def mix(*layers):
             out[i] += s
     return out
 
-def place(seq_list, offset_beats=0.0, vol=1.0):
-    """Place a list of note-chunks on a beat grid inside one loop."""
+def place(seq_list, vol=1.0):
+    """Place note-chunks on a beat grid inside one loop."""
     n = int(LOOP * RATE)
     out = [0.0] * n
     for off_b, chunk in seq_list:
@@ -113,54 +125,50 @@ def place(seq_list, offset_beats=0.0, vol=1.0):
                 out[j] += v
     return out
 
-# home — sunny ukulele-ish arp (C major), soft bass
-home_notes = []
-for b, f in [(0, 262), (0.5, 330), (1, 392), (1.5, 523), (2, 440), (2.5, 523), (3, 659), (3.5, 523),
-             (4, 330), (4.5, 392), (5, 494), (5.5, 659), (6, 440), (6.5, 523), (7, 659), (7.5, 784)]:
-    home_notes.append((b, tone(f, 0.42, 'triangle', vol=0.5)))
-home_bass = []
+# home — gentle marimba-ish C major, quarter notes only (was 8th-note arps = ringy),
+# soft sine bass. Feels like a sunny uke, not a music box.
+home_lay = []
+mel = [(0, 262), (1, 330), (2, 392), (3, 262),
+       (4, 330), (5, 392), (6, 523), (7, 392)]
+for b, f in mel:
+    home_lay.append((b, note(f, 1.1 * BEAT, 'warm', vol=0.55, attack=0.01)))
+home_bass_lay = []
 for b, f in [(0, 131), (2, 98), (4, 131), (6, 196)]:
-    home_bass.append((b, tone(f, 0.9, 'sine', vol=0.55)))
-home = mix(place(home_notes), place(home_bass))
+    home_bass_lay.append((b, note(f, 1.8 * BEAT, 'sine', vol=0.5, attack=0.02)))
+home = mix(place(home_lay), place(home_bass_lay))
 peak = max(abs(s) for s in home)
-write_wav('music_home.wav', [s / peak * 0.6 for s in home])
+write_wav('music_home.wav', [s / peak * 0.62 for s in home])
 
-# guess — tension: low pulsing bass + soft 16th hats + sparse minor arp
-hat = [((1 if (i // 4) % 2 == 0 else -1) * 0.16) * (1 - i / (int(0.05 * RATE))) for i in range(int(0.05 * RATE))]
-hat_lay, arp_lay = [], []
-for k in range(32):
-    hat_lay.append((k * 0.25, hat))
-for b, f in [(0, 220), (0.5, 262), (1, 330), (2, 220), (2.5, 262), (3, 330),
-             (4, 220), (4.5, 262), (5, 330), (6, 220), (6.5, 262), (7, 330)]:
-    arp_lay.append((b, tone(f, 0.35, 'sine', vol=0.28)))
-guess_bass, guess = [], []
+# guess — warm low pulse + sparse A-minor hint, no 16th hats (hats = ringy ticks)
+guess_lay = []
+for b, f in [(0, 220), (2, 262), (4, 330), (6, 262)]:
+    guess_lay.append((b, note(f, 1.4 * BEAT, 'sine', vol=0.30, attack=0.015)))
+guess_bass = []
 for b in range(8):
-    guess_bass.append((b, tone(110, 0.4, 'sine', vol=0.4)))
-guess = mix(place(guess_bass), place(arp_lay), place(hat_lay, vol=0.5))
+    guess_bass.append((b, note(110, 0.7 * BEAT, 'sine', vol=0.42, attack=0.02)))
+guess = mix(place(guess_bass), place(guess_lay))
 peak = max(abs(s) for s in guess)
 write_wav('music_guess.wav', [s / peak * 0.6 for s in guess])
 
-# reveal — playful staccato pizzicato (G major), bouncy
+# reveal — bouncy but rounded: eighths on a warm body, G major, slower 112
 rev_lay = []
-mel = [392, 494, 587, 784, 587, 494, 392, 494, 392, 494, 587, 784, 988, 784, 587, 494]
+mel = [392, 494, 587, 392, 494, 587, 784, 587, 494, 392, 494, 587, 784, 988, 784, 587]
 for i, f in enumerate(mel):
-    rev_lay.append((i * 0.25, tone(f, 0.16, 'triangle', vol=0.5)))
-for b, f in [(0, 196), (2, 262), (4, 196), (6, 262)]:
-    rev_lay.append((b, tone(f, 0.5, 'sine', vol=0.35)))
-reveal_music = place(rev_lay)
+    rev_lay.append((i * 0.5, note(f, 0.55 * BEAT, 'warm', vol=0.5, attack=0.01)))
+rev_bass = []
+for b, f in [(0, 196), (4, 262)]:
+    rev_bass.append((b, note(f, 1.6 * BEAT, 'sine', vol=0.35, attack=0.02)))
+reveal_music = mix(place(rev_lay), place(rev_bass))
 peak = max(abs(s) for s in reveal_music)
 write_wav('music_reveal.wav', [s / peak * 0.6 for s in reveal_music])
 
-# vote — suspense heartbeat + ticking
+# vote — warm heartbeat (was 55Hz thump + 1200Hz square ticks)
 vote_lay = []
-for b in [0.0, 0.28]:
-    vote_lay.append((b, tone(55, 0.18, 'sine', vol=0.9)))
-for b in [1.0, 1.28]:
-    vote_lay.append((b, tone(55, 0.18, 'sine', vol=0.9)))
-for b in range(8):
-    vote_lay.append((b + 0.5, tone(1200, 0.03, 'square', vol=0.12)))
-vote_lay.append((2.0, tone(110, 1.6, 'sine', vol=0.25)))
-vote_lay.append((4.0, tone(110, 1.6, 'sine', vol=0.25)))
+for beat_off in (0.0, 0.28):
+    vote_lay.append((beat_off, note(65, 0.16, 'sine', vol=0.85, attack=0.015)))
+    vote_lay.append((beat_off + 1.0, note(65, 0.16, 'sine', vol=0.85, attack=0.015)))
+vote_lay.append((2.0, note(110, 1.8 * BEAT, 'sine', vol=0.22, attack=0.03)))
+vote_lay.append((4.0, note(110, 1.8 * BEAT, 'sine', vol=0.22, attack=0.03)))
 vote_music = place(vote_lay)
 peak = max(abs(s) for s in vote_music)
 write_wav('music_vote.wav', [s / peak * 0.6 for s in vote_music])

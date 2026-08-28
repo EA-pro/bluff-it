@@ -3,7 +3,7 @@ import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, KeyboardAvoid
 import { LinearGradient } from 'expo-linear-gradient';
 import AvatarFace from '@/components/AvatarFace';
 import BigButton from '@/components/BigButton';
-import { AVATARS, isPremiumAvatar } from '@/game/avatars';
+import { AVATARS, isPremiumAvatar, EXCLUSIVE_AVATARS } from '@/game/avatars';
 import { getFaceEmoji } from '@/game/facepick';
 import { useGame } from '@/game/useStore';
 import { addPlayer, removePlayer, startGame, setConfig, goHome } from '@/game/store';
