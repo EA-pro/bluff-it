@@ -96,6 +96,123 @@ export function distPct(g: number, truth: number): number {
   return clamp((Math.abs(g - truth) / Math.abs(truth)) * 100, 0, 100);
 }
 
+// ---------------------------------------------------------------- WORDS mode
+// Fibbage-style: every question has one objective truth.
+//   personal — about {name}; the TARGET player's written answer IS the truth.
+//   trivia   — stored truthText; it appears as its own card (like the true number).
+// Scoring: +5 for voting the true card, +2 per person who voted YOUR card
+// (the gaslighting bonus — same economy as classic).
+
+export const WORDS_MAX_CHARS = 60;
+
+/** Lenient text equality: case/punctuation/whitespace-insensitive. */
+export function normText(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9à-öø-ÿ]+/g, '');
+}
+
+/** Pick the target player for a personal question (random per round). */
+export function newWordsRoundState(q: Question, players: Player[]): RoundState {
+  const targetId = pick(players).id;
+  const options = shuffle([...players.map((p) => p.id), TRUTH_KEY]);
+  return {
+    question: q,
+    wordsTargetId: q.kind === 'personal' ? targetId : null,
+    guessOrder: shuffle(players.map((p) => p.id)),
+    guesses: Object.fromEntries(players.map((p) => [p.id, null])),
+    guessesText: Object.fromEntries(players.map((p) => [p.id, null])),
+    votes: Object.fromEntries(players.map((p) => [p.id, null])),
+    optionOrder: options,
+    revealed: false,
+  };
+}
+
+/** The option key that is the true answer in words mode. */
+export function wordsTruthKey(round: RoundState): string {
+  return round.wordsTargetId && round.question.kind === 'personal' ? round.wordsTargetId : TRUTH_KEY;
+}
+
+/**
+ * Words duplicate/truth guard (mirrors the numeric keypad popup):
+ *  - 'exact'     : trivia — the written answer EQUALS the stored truth
+ *                  (you can't just type the obvious answer)
+ *  - 'duplicate' : somebody already submitted the same answer
+ */
+export function checkWordsGuess(round: RoundState, pid: string, text: string): GuessCheck {
+  const t = normText(text);
+  if (!t) return { ok: false, reason: 'duplicate' };
+  if (round.question.kind === 'trivia' && round.question.truthText && normText(round.question.truthText) === t) {
+    return { ok: false, reason: 'exact' };
+  }
+  for (const [otherId, g] of Object.entries(round.guessesText ?? {})) {
+    if (otherId !== pid && g != null && normText(g) === t) return { ok: false, reason: 'duplicate' };
+  }
+  return { ok: true };
+}
+
+/**
+ * Words-mode round scoring (Fibbage, same point economy as classic):
+ *  - every voter who picked the TRUE card: +5
+ *  - every player: +2 per person who voted THEIR card (gaslit by you)
+ */
+export function scoreWordsRound(round: RoundState, players: Player[]): RoundScore {
+  const truthKey = wordsTruthKey(round);
+  const texts = round.guessesText ?? {};
+
+  const fooled: Record<string, string[]> = {};
+  for (const p of players) (fooled[p.id] = []);
+  for (const [voter, target] of Object.entries(round.votes)) {
+    if (target && target !== TRUTH_KEY && target !== voter && target in fooled) fooled[target].push(voter);
+  }
+
+  const truthWriterId = round.question.kind === 'personal' ? round.wordsTargetId ?? null : null;
+
+  const rows: ResultRow[] = players.map((p) => {
+    const g = texts[p.id];
+    const f = g != null ? fooled[p.id].length : 0;
+    const votedTruth = round.votes[p.id] === truthKey;
+    const parts: string[] = [];
+    let pts = 0;
+    if (votedTruth) {
+      pts += 5;
+      parts.push(t('pt_truth_vote'));
+    }
+    if (f > 0) {
+      pts += 2 * f;
+      parts.push(t('pt_fooled', { a: 2 * f, b: f }));
+    }
+    if (parts.length === 0) parts.push(t('pt_none'));
+    return {
+      playerId: p.id,
+      guess: null,
+      fooled: f > 0 ? [...fooled[p.id]] : [],
+      distPct: 0,
+      pts,
+      parts,
+    };
+  });
+
+  // best "liar": non-truth player card that fooled the most people
+  let bestLiarId: string | null = null;
+  let bestLiarVotes = 0;
+  for (const p of players) {
+    if (p.id === truthKey) continue;
+    const v = fooled[p.id].length;
+    if (v > bestLiarVotes) { bestLiarVotes = v; bestLiarId = p.id; }
+  }
+
+  const awards: Record<string, number> = {};
+  rows.forEach((r) => (awards[r.playerId] = r.pts));
+
+  return {
+    awards,
+    rows,
+    closestIds: truthWriterId ? [truthWriterId] : [], // words: the truth writer is the "winner"
+    exactIds: truthWriterId ? [truthWriterId] : [],
+    bestLiarId,
+    biggestBluffId: bestLiarId,
+  };
+}
+
 export interface RoundScore {
   awards: Record<string, number>;
   rows: ResultRow[];
