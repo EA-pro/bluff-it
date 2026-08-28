@@ -74,11 +74,6 @@ export default function Reading() {
               >
                 {q.text}
               </Text>
-              {q.hint ? (
-                <View style={styles.hintChip}>
-                  <Text style={styles.hintTxt}>💡 {q.hint}</Text>
-                </View>
-              ) : null}
             </View>
           )}
           <Text style={styles.readOut}>
@@ -137,8 +132,6 @@ const styles = StyleSheet.create({
   moleText: { fontSize: 16, fontWeight: '700', color: Palette.ink, textAlign: 'center', lineHeight: 23 },
   moleBold: { fontWeight: '900', color: Palette.grape },
   qText: { fontSize: 25, fontWeight: '900', color: Palette.ink, textAlign: 'center', lineHeight: 34 },
-  hintChip: { backgroundColor: '#FFF3BF', borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 2.5, borderColor: 'rgba(27,31,59,0.2)' },
-  hintTxt: { color: '#7A5A00', fontSize: 13, fontWeight: '700', textAlign: 'center' },
   readOut: { color: '#fff', textAlign: 'center', fontSize: 16, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.2)', textShadowRadius: 4, textShadowOffset: { width: 0, height: 2 } },
   bottom: { padding: 20, paddingBottom: 34 },
 });

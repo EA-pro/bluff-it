@@ -107,7 +107,6 @@ export default function Guess() {
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyInner} showsVerticalScrollIndicator={false}>
         <View style={styles.qBox}>
           <Text style={styles.qText} numberOfLines={4} adjustsFontSizeToFit>{q.text}</Text>
-          {q.hint ? <Text style={styles.qHint}>💡 {q.hint}</Text> : null}
         </View>
 
         <Text style={styles.padLabel}>
@@ -190,7 +189,6 @@ const styles = StyleSheet.create({
   bodyInner: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 12 },
   qBox: { marginHorizontal: 20, marginTop: 10, gap: 8 },
   qText: { color: '#fff', fontSize: 18, fontWeight: '900', textAlign: 'center', lineHeight: 25, textShadowColor: 'rgba(0,0,0,0.2)', textShadowRadius: 4, textShadowOffset: { width: 0, height: 2 } },
-  qHint: { color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginTop: 4, fontWeight: '700' },
   padLabel: { color: '#fff', textAlign: 'center', marginTop: 16, fontSize: 16, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.2)', textShadowRadius: 4, textShadowOffset: { width: 0, height: 2 } },
   valueBox: {
     alignSelf: 'center',
