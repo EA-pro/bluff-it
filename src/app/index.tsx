@@ -41,14 +41,6 @@ export default function Index() {
   const { phase } = useGame();
   const inGame = GAME_PHASES.has(phase);
 
-  if (!unlocked) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#FFF8F0' }}>
-        <Gate onUnlock={() => setUnlocked(true)} />
-      </View>
-    );
-  }
-
   // while a game is in progress: full-screen game phases (no tab bar)
   if (inGame) {
     return (
@@ -65,6 +57,7 @@ export default function Index() {
           {phase === 'result' && <Result />}
           {phase === 'end' && <End />}
         </PhaseFade>
+        {!unlocked && <Gate onUnlock={() => setUnlocked(true)} />}
       </View>
     );
   }
@@ -77,6 +70,7 @@ export default function Index() {
         {tab === 'profile' && <ProfileTab />}
       </View>
       <TabBar tab={tab} onTab={setTab} />
+      {!unlocked && <Gate onUnlock={() => setUnlocked(true)} />}
     </View>
   );
 }

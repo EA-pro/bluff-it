@@ -61,10 +61,10 @@ export default function Gate({ onUnlock }: { onUnlock: () => void }) {
   });
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.overlay}>
       <LinearGradient
         colors={Gradients.mole}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { opacity: 0.5 }]}
         pointerEvents="none"
       />
       <KeyboardAvoidingView
@@ -72,12 +72,6 @@ export default function Gate({ onUnlock }: { onUnlock: () => void }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.wrap}>
-          {/* Logo */}
-          <View style={styles.logoCard}>
-            <Text style={styles.logo}>BLUFF IT</Text>
-            <Text style={styles.logoSub}>{t('gate_sub')}</Text>
-          </View>
-
           <Animated.View style={{ transform: [{ translateX }] }}>
             <View style={styles.box}>
               <Text style={styles.lockIcon}>🔐</Text>
@@ -122,31 +116,8 @@ export default function Gate({ onUnlock }: { onUnlock: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   wrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  logoCard: {
-    backgroundColor: '#fff',
-    borderRadius: Radius.xl,
-    borderWidth: 4,
-    borderColor: Palette.ink,
-    ...Shadow.pop,
-    paddingVertical: 14,
-    paddingHorizontal: 34,
-    marginBottom: 28,
-  },
-  logo: {
-    fontSize: 44,
-    fontWeight: '900',
-    color: Palette.ink,
-    letterSpacing: 1,
-  },
-  logoSub: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: Palette.muted,
-    letterSpacing: 2,
-    textAlign: 'center',
-    marginTop: 2,
-  },
   box: {
     width: '100%',
     backgroundColor: '#fff',
