@@ -97,12 +97,13 @@ export function distPct(g: number, truth: number): number {
 }
 
 // ---------------------------------------------------------------- WORDS mode
-// Fibbage-style: every question has one objective truth.
-//   personal — about {name}; the TARGET player's written answer IS the truth.
-//   trivia   — stored truthText; it appears as its own card (like the true number).
+// Fibbage-style, objective-only: every question is a hard, funny trivia fact
+// with ONE stored correct answer (truthText). That answer appears on the board
+// as its own truth card — exactly like classic shows the true number. Players
+// write a short answer (or the truth if they know it); the group votes for
+// which written card is the real one.
 // Scoring: +5 for voting the true card, +2 per person who voted YOUR card
 // (the gaslighting bonus — same economy as classic).
-
 export const WORDS_MAX_CHARS = 60;
 
 /** Lenient text equality: case/punctuation/whitespace-insensitive. */
@@ -110,13 +111,11 @@ export function normText(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9à-öø-ÿ]+/g, '');
 }
 
-/** Pick the target player for a personal question (random per round). */
+/** Words round state: options = every player's text card + the stored truth card. */
 export function newWordsRoundState(q: Question, players: Player[]): RoundState {
-  const targetId = pick(players).id;
   const options = shuffle([...players.map((p) => p.id), TRUTH_KEY]);
   return {
     question: q,
-    wordsTargetId: q.kind === 'personal' ? targetId : null,
     guessOrder: shuffle(players.map((p) => p.id)),
     guesses: Object.fromEntries(players.map((p) => [p.id, null])),
     guessesText: Object.fromEntries(players.map((p) => [p.id, null])),
@@ -126,21 +125,23 @@ export function newWordsRoundState(q: Question, players: Player[]): RoundState {
   };
 }
 
-/** The option key that is the true answer in words mode. */
+/** The option key that is the true answer in words mode (always the stored truth). */
 export function wordsTruthKey(round: RoundState): string {
-  return round.wordsTargetId && round.question.kind === 'personal' ? round.wordsTargetId : TRUTH_KEY;
+  return TRUTH_KEY;
 }
 
 /**
  * Words duplicate/truth guard (mirrors the numeric keypad popup):
- *  - 'exact'     : trivia — the written answer EQUALS the stored truth
- *                  (you can't just type the obvious answer)
+ *  - 'exact'     : the written answer EQUALS the stored truth — rejected
+ *                  (typing the obvious true answer is not a bluff; in a
+ *                  Fibbage game the group votes for which card is real, so
+ *                  there can only ever be ONE truth card on the board)
  *  - 'duplicate' : somebody already submitted the same answer
  */
 export function checkWordsGuess(round: RoundState, pid: string, text: string): GuessCheck {
   const t = normText(text);
   if (!t) return { ok: false, reason: 'duplicate' };
-  if (round.question.kind === 'trivia' && round.question.truthText && normText(round.question.truthText) === t) {
+  if (round.question.truthText && normText(round.question.truthText) === t) {
     return { ok: false, reason: 'exact' };
   }
   for (const [otherId, g] of Object.entries(round.guessesText ?? {})) {
@@ -163,8 +164,6 @@ export function scoreWordsRound(round: RoundState, players: Player[]): RoundScor
   for (const [voter, target] of Object.entries(round.votes)) {
     if (target && target !== TRUTH_KEY && target !== voter && target in fooled) fooled[target].push(voter);
   }
-
-  const truthWriterId = round.question.kind === 'personal' ? round.wordsTargetId ?? null : null;
 
   const rows: ResultRow[] = players.map((p) => {
     const g = texts[p.id];
@@ -206,8 +205,8 @@ export function scoreWordsRound(round: RoundState, players: Player[]): RoundScor
   return {
     awards,
     rows,
-    closestIds: truthWriterId ? [truthWriterId] : [], // words: the truth writer is the "winner"
-    exactIds: truthWriterId ? [truthWriterId] : [],
+    closestIds: [], // words: no numeric closeness
+    exactIds: [],
     bestLiarId,
     biggestBluffId: bestLiarId,
   };
@@ -350,7 +349,12 @@ export function scoreMoleRound(round: RoundState, players: Player[]): MoleResult
 
 export function makeGame(players: Player[], config: GameConfig, deck: Question[], moleDeck: MolePair[]): GameState {
   const isMole = config.mode === 'mole';
-  const round = isMole ? newMoleRoundState(moleDeck[0], players) : newRoundState(deck[0], players);
+  const isWords = config.mode === 'words';
+  const round = isMole
+    ? newMoleRoundState(moleDeck[0], players)
+    : isWords
+      ? newWordsRoundState(deck[0], players)
+      : newRoundState(deck[0], players);
   return {
     phase: 'reading',
     players,

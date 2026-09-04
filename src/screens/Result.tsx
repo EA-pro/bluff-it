@@ -6,7 +6,7 @@ import AvatarFace from '@/components/AvatarFace';
 import Confetti from '@/components/Confetti';
 import { useGame } from '@/game/useStore';
 import { resultContinue } from '@/game/store';
-import { optionLetter } from '@/game/engine';
+import { optionLetter, wordsTruthKey } from '@/game/engine';
 import { play } from '@/game/sound';
 import { Palette, Radius, Shadow, Gradients } from '@/constants/theme';
 import { t } from '@/i18n';
@@ -18,6 +18,7 @@ type Step = {
   key: string;
   letter: string;
   value: number;
+  textValue?: string | null;
   isTruth: boolean;
   voters: Player[];
   author: Player | null;
@@ -41,6 +42,7 @@ export default function Result() {
   const game = useGame();
   const { round, players, result, roundIndex, config } = game;
   const isLast = roundIndex + 1 >= config.rounds;
+  const isWords = config.mode === 'words';
   const { height: winH } = useWindowDimensions();
   const compact = winH < 760;
 
@@ -66,6 +68,32 @@ export default function Result() {
   /** Lies (≥1 vote, most votes first), then the truth — always. 0-vote lies skipped. */
   const steps: Step[] = useMemo(() => {
     if (!round || result?.mole) return [];
+    const isWords = config.mode === 'words';
+    if (isWords) {
+      const texts = round.guessesText ?? {};
+      const truthKey = wordsTruthKey(round);
+      const wmk = (key: string): Step | null => {
+        const i = round.optionOrder.indexOf(key);
+        const textValue = key === TRUTH_KEY ? round.question.truthText ?? null : (texts[key] ?? null);
+        if (textValue == null || i < 0) return null;
+        return {
+          key,
+          letter: optionLetter(i),
+          value: 0,
+          textValue,
+          isTruth: key === truthKey,
+          voters: players.filter((p) => round.votes[p.id] === key),
+          author: key === truthKey ? null : players.find((p) => p.id === key) ?? null,
+        };
+      };
+      const wLies = round.optionOrder
+        .filter((k) => k !== TRUTH_KEY && k !== truthKey)
+        .map(wmk)
+        .filter((s): s is Step => s !== null && s.voters.length > 0)
+        .sort((a, b) => b.voters.length - a.voters.length);
+      const wTruthStep = wmk(truthKey);
+      return [...wLies, ...(wTruthStep ? [wTruthStep] : [])];
+    }
     const truthValue = round.question.truth ?? 0;
     const mk = (key: string): Step | null => {
       const i = round.optionOrder.indexOf(key);
@@ -87,7 +115,7 @@ export default function Result() {
       .sort((a, b) => b.voters.length - a.voters.length);
     const truthStep = mk(TRUTH_KEY);
     return [...lies, ...(truthStep ? [truthStep] : [])];
-  }, [round, players, result]);
+  }, [round, players, result, config]);
 
   const cur: Step | undefined = steps[step];
 
@@ -213,10 +241,16 @@ export default function Result() {
               }}
             >
               <View style={[styles.bigCard, showVerdict && cur.isTruth && styles.bigCardTruth]}>
-                <Text style={[styles.bigValue, compact && styles.bigValueSm]} numberOfLines={1} adjustsFontSizeToFit>
-                  {cur.value.toLocaleString('en-US')}
-                </Text>
-                {round.question.unit ? <Text style={styles.bigUnit}>{round.question.unit}</Text> : null}
+                {cur.textValue != null ? (
+                  <Text style={[styles.bigWord, compact && styles.bigWordSm]} numberOfLines={4} adjustsFontSizeToFit>
+                    “{cur.textValue}”
+                  </Text>
+                ) : (
+                  <Text style={[styles.bigValue, compact && styles.bigValueSm]} numberOfLines={1} adjustsFontSizeToFit>
+                    {cur.value.toLocaleString('en-US')}
+                  </Text>
+                )}
+                {cur.textValue == null && round.question.unit ? <Text style={styles.bigUnit}>{round.question.unit}</Text> : null}
               </View>
             </Animated.View>
 
@@ -261,7 +295,9 @@ export default function Result() {
                 <Text style={styles.verdictEmoji}>{cur.isTruth ? '✅' : '🎭'}</Text>
                 <View style={styles.verdictMid}>
                   <Text style={[styles.verdictTitle, cur.isTruth ? styles.verdictTitleTruth : styles.verdictTitleLie]}>
-                    {cur.isTruth ? t('res_truth_verdict') : t('res_lie')}
+                    {cur.isTruth
+                      ? isWords ? t('res_words_verdict') : t('res_truth_verdict')
+                      : isWords ? t('res_words_lie') : t('res_lie')}
                   </Text>
                   <Text style={[styles.verdictSub, cur.isTruth && styles.verdictSubTruth]}>
                     {cur.isTruth ? t('res_truth_was') : cur.author ? t('res_lie_by', cur.author.name) : ''}
@@ -314,6 +350,16 @@ export default function Result() {
   const liar = players.find((p) => p.id === result.bestLiarId);
   const bluff = players.find((p) => p.id === result.biggestBluffId);
 
+  // words mode: the true answer is text, not a number. Personal → the target's
+  // own written answer; trivia → the stored truthText.
+  const wordsTruthText = isWords && round
+    ? (wordsTruthKey(round) === TRUTH_KEY
+        ? round.question.truthText ?? null
+        : (round.guessesText?.[wordsTruthKey(round)] ?? null))
+    : null;
+  const wordsGuessOf = (pid: string): string | null =>
+    isWords ? (round?.guessesText?.[pid] ?? null) : null;
+
   return (
     <LinearGradient colors={Gradients.result} style={styles.bg}>
       <Confetti trigger={burst.current} height={220} />
@@ -321,30 +367,46 @@ export default function Result() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View style={{ opacity: popIn, transform: [{ scale: popIn }] }}>
           <View style={styles.truthCard}>
-            <Text style={styles.truthEyebrow}>{t('res_truth')}</Text>
-            <Text style={styles.truthBig}>
-              {result.truth.toLocaleString('en-US')}
-              {result.unit ? <Text style={styles.truthUnit}> {result.unit}</Text> : null}
+            <Text style={styles.truthEyebrow}>
+              {isWords ? t('res_words_reveal') : t('res_truth')}
             </Text>
-            {exact.length > 0 ? (
-              <View style={styles.winnerRow}>
-                <AvatarFace avatarId={exact[0].avatarId} size={40} />
-                <Text style={styles.winnerTxt}>
-                  {t('res_nailed', exact.map((p) => p.name).join(' + '))}
-                </Text>
-              </View>
-            ) : closest.length > 0 ? (
-              <View style={styles.winnerRow}>
-                <AvatarFace avatarId={closest[0].avatarId} size={40} />
-                <Text style={styles.winnerTxt}>
-                  {t('res_closest', closest.map((p) => p.name).join(' + '))}
-                </Text>
-              </View>
+            {isWords && wordsTruthText != null ? (
+              <Text style={styles.truthWords} numberOfLines={4} adjustsFontSizeToFit>
+                “{wordsTruthText}”
+              </Text>
             ) : (
-              <View style={[styles.winnerRow, styles.nobodyRow]}>
-                <Text style={styles.nobodyTxt}>{t('res_nobody')}</Text>
-              </View>
+              <Text style={styles.truthBig}>
+                {result.truth.toLocaleString('en-US')}
+                {result.unit ? <Text style={styles.truthUnit}> {result.unit}</Text> : null}
+              </Text>
             )}
+            {isWords
+              ? (
+                  <View style={styles.winnerRow}>
+                    <Text style={styles.winnerTxt}>
+                      {t('res_words_nobody')}
+                    </Text>
+                  </View>
+                )
+              : exact.length > 0 ? (
+                  <View style={styles.winnerRow}>
+                    <AvatarFace avatarId={exact[0].avatarId} size={40} />
+                    <Text style={styles.winnerTxt}>
+                      {t('res_nailed', exact.map((p) => p.name).join(' + '))}
+                    </Text>
+                  </View>
+                ) : closest.length > 0 ? (
+                  <View style={styles.winnerRow}>
+                    <AvatarFace avatarId={closest[0].avatarId} size={40} />
+                    <Text style={styles.winnerTxt}>
+                      {t('res_closest', closest.map((p) => p.name).join(' + '))}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={[styles.winnerRow, styles.nobodyRow]}>
+                    <Text style={styles.nobodyTxt}>{t('res_nobody')}</Text>
+                  </View>
+                )}
           </View>
         </Animated.View>
 
@@ -374,10 +436,18 @@ export default function Result() {
                     <AvatarFace avatarId={p.avatarId} size={38} />
                     <View style={styles.rowMid}>
                       <Text style={styles.rowName} numberOfLines={1}>
-                        {p.name} <Text style={styles.rowGuess}>· {row.guess != null ? row.guess.toLocaleString('en-US') : t('no_guess')}</Text>
+                        {p.name} <Text style={styles.rowGuess}>
+                          {isWords
+                            ? wordsGuessOf(p.id) != null ? `· ${wordsGuessOf(p.id)}` : t('res_words_skip')
+                            : row.guess != null ? `· ${row.guess.toLocaleString('en-US')}` : t('no_guess')}
+                        </Text>
                       </Text>
                       <View style={styles.rowTags}>
-                        {result.exactIds.includes(p.id) && <Text style={[styles.rowTag, styles.rowTagWin]}>{t('exact')}</Text>}
+                        {result.exactIds.includes(p.id) && (
+                          <Text style={[styles.rowTag, styles.rowTagWin]}>
+                            {isWords ? t('correct_mark') : t('exact')}
+                          </Text>
+                        )}
                         {fooledNames.length > 0 && (
                           <Text style={styles.foolTag} numberOfLines={1}>
                             {t('res_fooled', fooledNames.join(', '))}
@@ -749,6 +819,9 @@ const styles = StyleSheet.create({
   bigCardTruth: { backgroundColor: '#F0FDF4', borderColor: '#1F7A2E' },
   bigValue: { color: Palette.ink, fontSize: 48, fontWeight: '900', fontVariant: ['tabular-nums'], textAlign: 'center' },
   bigValueSm: { fontSize: 38 },
+  bigWord: { color: Palette.ink, fontSize: 30, fontWeight: '800', textAlign: 'center', lineHeight: 40 },
+  bigWordSm: { fontSize: 24, lineHeight: 32 },
+  truthWords: { color: Palette.ink, fontSize: 30, fontWeight: '800', marginTop: 6, textAlign: 'center', lineHeight: 40 },
   bigUnit: { color: Palette.muted, fontSize: 15, fontWeight: '800' },
   votersLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '900', letterSpacing: 1.5, textAlign: 'center', marginBottom: 7 },
   votersRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 7, maxWidth: 340 },

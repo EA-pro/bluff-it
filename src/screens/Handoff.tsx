@@ -37,10 +37,13 @@ export default function Handoff() {
 
   const isGuess = kind === 'guess';
   const isMoleVote = kind === 'molevote';
+  const isWords = game.config.mode === 'words';
   const title = isMoleVote
     ? t('ho_mole_title')
     : isGuess
-      ? t('ho_guess_title')
+      ? isWords
+        ? t('ho_words_title')
+        : t('ho_guess_title')
       : t('ho_vote_title');
   const grad = isMoleVote ? Gradients.mole : isGuess ? Gradients.guess : Gradients.vote;
   const ring = wave.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.12] });

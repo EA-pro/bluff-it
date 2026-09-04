@@ -23,6 +23,7 @@ export default function Reading() {
 
   if (!round) return null;
   const q = round.question;
+  const isWords = config.mode === 'words';
 
   return (
     <LinearGradient colors={Gradients.reading} style={styles.bg}>
@@ -61,6 +62,19 @@ export default function Reading() {
                 {t('mole_txt9')}
               </Text>
             </View>
+          ) : isWords ? (
+            <View style={styles.qCard}>
+              <View style={styles.wordsChip}>
+                <Text style={styles.wordsChipTxt}>{t('read_words_badge')}</Text>
+              </View>
+              <Text
+                style={[styles.qText, { fontSize: sm ? 19 : 25, lineHeight: sm ? 26 : 34 }]}
+                numberOfLines={8}
+                adjustsFontSizeToFit
+              >
+                {q.text}
+              </Text>
+            </View>
           ) : (
             <View style={styles.qCard}>
               <View style={styles.qLabelChip}>
@@ -77,7 +91,11 @@ export default function Reading() {
             </View>
           )}
           <Text style={styles.readOut}>
-            {config.mode === 'mole' ? t('mole_silent') : t('read_aloud')}
+            {config.mode === 'mole'
+              ? t('mole_silent')
+              : isWords
+                ? t('read_words')
+                : t('read_aloud')}
           </Text>
         </ScrollView>
 
@@ -86,7 +104,11 @@ export default function Reading() {
             label={
               config.mode === 'mole'
                 ? expired ? t('next_arrow') : t('got_it_mole')
-                : expired ? t('next_arrow') : t('got_it_classic')
+                : expired
+                  ? t('next_arrow')
+                  : isWords
+                    ? t('got_it_words')
+                    : t('got_it_classic')
             }
             onPress={readingDone}
           />
@@ -129,6 +151,8 @@ const styles = StyleSheet.create({
   qLabelTxt: { color: '#fff', fontSize: 11, fontWeight: '900', letterSpacing: 2 },
   moleChip: { backgroundColor: Palette.grape, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   moleChipTxt: { color: '#fff', fontSize: 11, fontWeight: '900', letterSpacing: 2 },
+  wordsChip: { backgroundColor: Palette.coral, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  wordsChipTxt: { color: '#fff', fontSize: 11, fontWeight: '900', letterSpacing: 2 },
   moleText: { fontSize: 16, fontWeight: '700', color: Palette.ink, textAlign: 'center', lineHeight: 23 },
   moleBold: { fontWeight: '900', color: Palette.grape },
   qText: { fontSize: 25, fontWeight: '900', color: Palette.ink, textAlign: 'center', lineHeight: 34 },

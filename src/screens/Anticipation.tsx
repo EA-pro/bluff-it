@@ -79,10 +79,6 @@ export default function Anticipation() {
           </Animated.View>
         </Animated.View>
       </View>
-
-      <View style={styles.bottom}>
-        <Text style={styles.foot}>{t('ant_sub')}</Text>
-      </View>
     </LinearGradient>
   );
 }

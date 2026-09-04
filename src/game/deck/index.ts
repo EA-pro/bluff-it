@@ -2,7 +2,11 @@ import { Question, MolePair, CategoryId } from '../types';
 import { QUESTIONS } from './questions';
 import { MOLE } from './mole';
 import { CLASSIC_DE, CLASSIC_NL, MOLE_DE, MOLE_NL, DeckTrans } from './translations';
+import { buildWordsDeck, WORDS_CATEGORIES, WordsCategory, WordsPrompt } from './words';
 import type { Lang } from '@/i18n';
+
+export { buildWordsDeck, WORDS_CATEGORIES };
+export type { WordsCategory, WordsPrompt };
 
 /** Question categories and their free/paid status (the Setup picker). */
 export const CATEGORIES: { id: CategoryId; free: boolean }[] = [
@@ -67,3 +71,8 @@ export function buildMoleDeck(lang: Lang = 'en'): MolePair[] {
 
 // Back-compat: the old DECK export (EN classic deck).
 export const DECK: Question[] = buildClassicDeck();
+
+/** WordsPrompt -> Question (the store/engine operate on Questions). */
+export function wordsPromptToQuestion(p: WordsPrompt): Question {
+  return { id: p.id, type: 'numeric', text: p.text, truth: 0, truthText: p.truthText, cat: p.cat };
+}

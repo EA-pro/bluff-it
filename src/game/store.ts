@@ -1,6 +1,6 @@
 import { GameConfig, GameState, Player, DEFAULT_CONFIG, TRUTH_KEY } from './types';
-import { makeGame, newRoundState, newMoleRoundState, scoreRound, scoreMoleRound, shuffle, checkGuess } from './engine';
-import { buildClassicDeck, buildMoleDeck, FREE_CATEGORIES } from './deck';
+import { makeGame, newRoundState, newMoleRoundState, newWordsRoundState, scoreRound, scoreMoleRound, scoreWordsRound, shuffle, checkGuess, checkWordsGuess, wordsTruthKey, WORDS_MAX_CHARS } from './engine';
+import { buildClassicDeck, buildMoleDeck, buildWordsDeck, wordsPromptToQuestion, FREE_CATEGORIES } from './deck';
 import { getQLang, t } from '@/i18n';
 import { play, setMusic } from './sound';
 import type { MusicTrack } from './sound';
@@ -73,7 +73,7 @@ function setEvent(e: string | null) { lastEvent = e; }
 export function addPlayer(name: string, avatarId: string, team: number) {
   if (state.players.length >= 6) return;
   const id = 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1000);
-  const p: Player = { id, name, avatarId, team, score: 0, bluffWins: 0, callWins: 0, biggestBluff: 0, fooledTotal: 0, moleWins: 0, huntWins: 0, moleFooledTotal: 0, wordWins: 0, tasteWins: 0 };
+  const p: Player = { id, name, avatarId, team, score: 0, bluffWins: 0, callWins: 0, biggestBluff: 0, fooledTotal: 0, moleWins: 0, huntWins: 0, moleFooledTotal: 0 };
   state = { ...state, players: [...state.players, p] };
   play('pop');
   emit();
@@ -121,6 +121,7 @@ function isProNow(): boolean {
 
 export function startGame() {
   const isMole = state.config.mode === 'mole';
+  const isWords = state.config.mode === 'words';
   const qLang = getQLang();
   // paid categories covered by gacha passes: the Setup picker already gates
   // on (premium || owned || pass), so anything left here is playable.
@@ -134,6 +135,18 @@ export function startGame() {
     const all = buildMoleDeck(qLang);
     const pairs = shuffle(all).slice(0, Math.min(state.config.rounds, all.length));
     state = makeGame(state.players, state.config, pairs.map((p) => p.base), pairs);
+    state.timerEndsAt = Date.now() + state.config.readSeconds * 1000;
+    play('slide');
+    emit();
+    return;
+  }
+  if (isWords) {
+    // words mode: the Fibbage deck — open-ended questions with written
+    // answers, same category mix as classic (free: general+funny).
+    const all = buildWordsDeck(state.config.categories as ('general' | 'funny' | 'sexy' | 'geo' | 'animals')[], qLang);
+    const deck = shuffle(all).slice(0, Math.min(state.config.rounds, all.length)).map(wordsPromptToQuestion);
+    state = makeGame(state.players, state.config, deck, []);
+    state.deck = deck;
     state.timerEndsAt = Date.now() + state.config.readSeconds * 1000;
     play('slide');
     emit();
@@ -175,9 +188,12 @@ function nextRoundOrEnd() {
   } else {
     const ni = state.roundIndex + 1;
     const isMole = state.config.mode === 'mole';
+    const isWords = state.config.mode === 'words';
     const round = isMole
       ? newMoleRoundState(state.moleDeck[ni], state.players)
-      : newRoundState(state.deck[ni], state.players);
+      : isWords
+        ? newWordsRoundState(state.deck[ni], state.players)
+        : newRoundState(state.deck[ni], state.players);
     state = {
       ...state,
       roundIndex: ni,
@@ -251,6 +267,42 @@ export function submitGuess(value: number | null) {
     state = {
       ...state,
       round: { ...state.round, guesses },
+      phase: 'handoff',
+      cursor: nextCursor,
+      handoffKind: 'guess',
+      timerEndsAt: null,
+    };
+    play('tick');
+  }
+  emit();
+}
+
+/** Player at cursor submits a written answer (words mode; null on timeout). */
+export function submitWordsGuess(text: string | null) {
+  if (!state.round) return;
+  const pid = state.players[state.cursor]?.id;
+  if (!pid) return;
+  // server-side guard: empty, duplicate, or (trivia) exact-truth answers pass
+  const clean = text != null ? text.trim().slice(0, WORDS_MAX_CHARS) : null;
+  const v = clean && !checkWordsGuess(state.round, pid, clean).ok ? null : clean || null;
+  const guessesText = { ...(state.round.guessesText ?? {}), [pid]: v };
+  const nextCursor = state.cursor + 1;
+  if (nextCursor >= state.players.length) {
+    // everyone wrote -> shared anonymous board of text cards
+    state = {
+      ...state,
+      round: { ...state.round, guessesText, revealed: true },
+      phase: 'reveal',
+      cursor: 0,
+      handoffKind: 'vote',
+      timerEndsAt: Date.now() + state.config.discussMinutes * 60 * 1000,
+    };
+    play('reveal');
+  } else {
+    // handoff to the next writer
+    state = {
+      ...state,
+      round: { ...state.round, guessesText },
       phase: 'handoff',
       cursor: nextCursor,
       handoffKind: 'guess',
@@ -407,10 +459,52 @@ function finishRound() {
     return;
   }
 
+  if (state.config.mode === 'words') {
+    const wres = scoreWordsRound(round, state.players);
+    const truthKey = wordsTruthKey(round);
+    // Objective-only Fibbage: the true card is the stored truthText. Badges
+    // reuse the classic stats — bluffWins = your written answer fooled the most
+    // people this round; callWins = you picked the true card in the vote.
+    const players = state.players.map((p) => {
+      const row = wres.rows.find((r) => r.playerId === p.id)!;
+      let { bluffWins, callWins } = p;
+      if (p.id === wres.bestLiarId) bluffWins++; // your lie fooled the most
+      if (round.votes[p.id] === truthKey) callWins++; // you voted the true card
+      return {
+        ...p,
+        score: p.score + row.pts,
+        bluffWins,
+        callWins,
+        fooledTotal: p.fooledTotal + row.fooled.length,
+      };
+    });
+    lastScores = wres.awards;
+    setEvent(truthKey ? 'winner' : null);
+    state = {
+      ...state,
+      players,
+      phase: 'result',
+      timerEndsAt: Date.now() + 9999 * 1000, // no auto-advance; user taps
+      round: { ...round, revealed: true },
+      result: {
+        truth: 0,
+        unit: undefined,
+        closestIds: wres.closestIds,
+        exactIds: wres.exactIds,
+        bestLiarId: wres.bestLiarId,
+        biggestBluffId: wres.biggestBluffId,
+        rows: wres.rows,
+        wordsTruthKey: truthKey,
+      },
+    };
+    play('win');
+    emit();
+    return;
+  }
+
   const res = scoreRound(round, state.players);
   const truth = round.question.truth ?? 0;
   const truthStr = Math.abs(truth).toLocaleString('en-US');
-
   const players = state.players.map((p) => {
     const row = res.rows.find((r) => r.playerId === p.id)!;
     let { bluffWins, callWins, biggestBluff } = p;

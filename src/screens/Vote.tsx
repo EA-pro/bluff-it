@@ -28,6 +28,7 @@ export default function Vote() {
   const { round, players, config, cursor, timerEndsAt } = game;
   const me = players[cursor];
   const isMole = config.mode === 'mole';
+  const isWords = config.mode === 'words';
   const { expired } = useCountdown(timerEndsAt, config.voteSeconds);
   const [sel, setSel] = useState<string | null>(null);
   const lockedRef = useRef(false);
@@ -49,14 +50,18 @@ export default function Vote() {
 
   const cards = useMemo(() => {
     if (!round) return [];
+    const texts = round.guessesText ?? {};
     return round.optionOrder
       .map((key, i) => {
         const value = key === 'truth' ? (round.question.truth ?? 0) : (round.guesses[key] ?? null);
+        const textValue = key === 'truth' ? round.question.truthText ?? null : (texts[key] ?? null);
         const owner = players.find((p) => p.id === key) ?? null;
-        return { key, letter: optionLetter(i), value, isOwn: key === me.id, owner, color: LETTER_COLORS[i % LETTER_COLORS.length] };
+        return { key, letter: optionLetter(i), value, textValue, isOwn: key === me.id, owner, color: LETTER_COLORS[i % LETTER_COLORS.length] };
       })
-      .filter((c): c is typeof c & { value: number } => c.value != null);
-  }, [round, me?.id, players]);
+      .filter((c): c is typeof c & { value: number; textValue: string | null } =>
+        isWords ? c.textValue != null : c.value != null
+      );
+  }, [round, me?.id, players, isWords]);
 
   // fluid grid: 3 columns on wide screens, 2 on phones
   const columns = width >= 420 ? 3 : 2;
@@ -90,7 +95,7 @@ export default function Vote() {
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyInner} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { fontSize: sm ? 19 : 24 }]}>{t('vote_title')}</Text>
         <Text style={styles.subtitle}>
-          {isMole ? t('vote_sub_mole') : t('vote_sub_classic')}
+          {isMole ? t('vote_sub_mole') : isWords ? t('vote_sub_words') : t('vote_sub_classic')}
         </Text>
 
         <View style={styles.grid}>
@@ -114,9 +119,15 @@ export default function Vote() {
                 <View style={[styles.letter, { backgroundColor: c.color }]}>
                   <Text style={styles.letterTxt}>{c.letter}</Text>
                 </View>
-                <Text style={[styles.value, { fontSize: sm ? 20 : 28 }]} numberOfLines={1} adjustsFontSizeToFit>
-                  {c.value.toLocaleString('en-US')}
-                </Text>
+                {isWords ? (
+                  <Text style={[styles.wordValue, { fontSize: sm ? 11 : 13 }]} numberOfLines={4}>
+                    “{c.textValue}”
+                  </Text>
+                ) : (
+                  <Text style={[styles.value, { fontSize: sm ? 20 : 28 }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {c.value.toLocaleString('en-US')}
+                  </Text>
+                )}
                 {isMole && c.owner && !c.isOwn ? (
                   <View style={styles.ownerChip}>
                     <AvatarFace avatarId={c.owner.avatarId} size={16} />
@@ -198,6 +209,7 @@ const styles = StyleSheet.create({
   },
   letterTxt: { color: '#fff', fontSize: 16, fontWeight: '900' },
   value: { color: Palette.ink, fontSize: 28, fontWeight: '900', fontVariant: ['tabular-nums'], maxWidth: '100%', textAlign: 'center' },
+  wordValue: { color: Palette.ink, fontWeight: '800', maxWidth: '100%', textAlign: 'center', lineHeight: 16 },
   ownerChip: {
     flexDirection: 'row',
     alignItems: 'center',

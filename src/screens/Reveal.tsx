@@ -31,6 +31,7 @@ export default function Reveal() {
   const game = useGame();
   const { round, players, config, roundIndex, timerEndsAt } = game;
   const isMole = config.mode === 'mole' && !!round?.moleId;
+  const isWords = config.mode === 'words' && !!round;
   const discussSeconds = config.discussMinutes * 60;
   const { expired } = useCountdown(timerEndsAt, discussSeconds);
   const fade = useRef(new Animated.Value(0)).current;
@@ -67,29 +68,32 @@ export default function Reveal() {
 
   const cards = useMemo(() => {
     if (!round) return [];
+    const texts = round.guessesText ?? {};
     return round.optionOrder
       .map((key, i) => {
         const value = key === 'truth' ? (round.question.truth ?? 0) : (round.guesses[key] ?? null);
+        const textValue = key === 'truth' ? round.question.truthText ?? null : (texts[key] ?? null);
         const owner = players.find((p) => p.id === key) ?? null;
         return {
           key,
           letter: optionLetter(i),
           value,
+          textValue,
           isTruth: key === 'truth',
           owner,
           unit: round.question.unit,
           color: LETTER_COLORS[i % LETTER_COLORS.length],
         };
       })
-      // mole mode: no truth card at all; classic: drop nulls
-      .filter((c) => (isMole ? !c.isTruth : c.value != null));
-  }, [round, players, isMole]);
+      // mole mode: no truth card at all; words: drop nulls; classic: drop nulls
+      .filter((c) => (isMole ? !c.isTruth : isWords ? c.textValue != null : c.value != null));
+  }, [round, players, isMole, isWords]);
 
   // fluid grid: pick the layout (2 or 3 columns) whose cards end up LARGEST,
   // and derive an exact card HEIGHT from the window so the grid can never
   // overflow into the question banner or the button below — on any phone.
   const { height } = useWindowDimensions();
-  const qBannerEstimate = isMole ? 132 : 108; // label + 2-line question (+ mole note)
+  const qBannerEstimate = isMole ? 132 : isWords ? 118 : 108; // label + 2-line question (+ notes)
   const reservedH = 118 + 64 + qBannerEstimate + 142; // top row + title/sub + qBanner + bottom
   const layout = useMemo(() => {
     const n = cards.length;
@@ -110,7 +114,8 @@ export default function Reveal() {
 
   if (!round) return null;
 
-  const grad = isMole ? Gradients.mole : Gradients.reveal;
+  const grad = isMole ? Gradients.mole : isWords ? Gradients.reveal : Gradients.reveal;
+  const bannerText = round.question.text;
 
   return (
     <LinearGradient colors={grad} style={styles.bg}>
@@ -118,7 +123,12 @@ export default function Reveal() {
         <View style={styles.top}>
           <View style={styles.pill}>
             <Text style={styles.pillTxt}>
-              {isMole ? t('reveal_pill_mole') : t('reveal_pill_classic')} {roundIndex + 1}/{config.rounds}
+              {isMole
+                ? t('reveal_pill_mole')
+                : isWords
+                  ? t('reveal_pill_words')
+                  : t('reveal_pill_classic')}{' '}
+              {roundIndex + 1}/{config.rounds}
             </Text>
           </View>
           <TimerRing endsAt={timerEndsAt} totalSeconds={discussSeconds} />
@@ -127,20 +137,30 @@ export default function Reveal() {
         {/* the discussion board — fully static, everything fits on one screen */}
         <View style={styles.boardArea}>
         <Text style={[styles.title, { fontSize: sm ? 18 : 24 }]}>
-          {isMole ? t('reveal_title_mole') : t('reveal_title_classic')}
+          {isMole
+            ? t('reveal_title_mole')
+            : isWords
+              ? t('reveal_title_words')
+              : t('reveal_title_classic')}
         </Text>
         <Text style={styles.subtitle}>
-          {isMole ? t('reveal_sub_mole') : t('reveal_sub_classic')}
+          {isMole
+            ? t('reveal_sub_mole')
+            : isWords
+              ? t('reveal_sub_words')
+              : t('reveal_sub_classic')}
         </Text>
 
         {/* the actual question, up top so the group can argue about it */}
         <View style={styles.qBanner}>
           <Text style={styles.qBannerLabel}>{t('reveal_q')}</Text>
           <Text style={styles.qBannerTxt} numberOfLines={2} adjustsFontSizeToFit>
-            {round.question.text} {round.question.unit ? `(${round.question.unit})` : ''}
+            {isWords ? bannerText : `${bannerText} ${round.question.unit ? `(${round.question.unit})` : ''}`}
           </Text>
           {isMole ? (
             <Text style={styles.qBannerSub}>{t('reveal_mole_note')}</Text>
+          ) : isWords ? (
+            <Text style={styles.qBannerSub}>{t('reveal_words_note')}</Text>
           ) : null}
         </View>
 
@@ -164,10 +184,19 @@ export default function Reveal() {
                 <View style={[styles.letter, { backgroundColor: c.color }]}>
                   <Text style={styles.letterTxt}>{c.letter}</Text>
                 </View>
-                <Text style={[styles.value, { fontSize: sm ? 20 : 26 }]} numberOfLines={1} adjustsFontSizeToFit>
-                  {c.value != null ? c.value.toLocaleString('en-US') : '—'}
-                </Text>
-                {c.unit && c.value != null && !tight ? (
+                {isWords ? (
+                  <Text
+                    style={[styles.wordValue, { fontSize: tight ? 11 : sm ? 12.5 : 14 }]}
+                    numberOfLines={tight ? 3 : 4}
+                  >
+                    “{c.textValue}”
+                  </Text>
+                ) : (
+                  <Text style={[styles.value, { fontSize: sm ? 20 : 26 }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {c.value != null ? c.value.toLocaleString('en-US') : '—'}
+                  </Text>
+                )}
+                {c.unit && c.value != null && !tight && !isWords ? (
                   <Text style={styles.unitTxt}>{c.unit}</Text>
                 ) : null}
                 {/* mole mode: who wrote it is ALWAYS visible — it's the evidence */}
@@ -185,11 +214,17 @@ export default function Reveal() {
 
         <View style={styles.bottom}>
           <BigButton
-            label={isMole ? t('reveal_hunt') : expired ? t('reveal_to_votes') : t('reveal_vote')}
+            label={
+              isMole
+                ? t('reveal_hunt')
+                : isWords
+                  ? expired ? t('reveal_to_votes') : t('reveal_vote_words')
+                  : expired ? t('reveal_to_votes') : t('reveal_vote')
+            }
             onPress={() => { play('pop'); haptic('medium'); revealDone(); }}
           />
           <Text style={styles.footNote}>
-            {isMole ? t('reveal_foot_mole') : t('reveal_foot_classic')}
+            {isMole ? t('reveal_foot_mole') : isWords ? t('reveal_foot_words') : t('reveal_foot_classic')}
           </Text>
         </View>
       </Animated.View>
@@ -278,6 +313,20 @@ const styles = StyleSheet.create({
   },
   letterTxt: { color: '#fff', fontSize: 16, fontWeight: '900' },
   value: { color: Palette.ink, fontSize: 26, fontWeight: '900', fontVariant: ['tabular-nums'], maxWidth: '100%', textAlign: 'center' },
+  wordValue: { color: Palette.ink, fontWeight: '800', maxWidth: '100%', textAlign: 'center', lineHeight: 18 },
+  correctTag: {
+    position: 'absolute',
+    bottom: -10,
+    right: -8,
+    backgroundColor: '#7ED957',
+    borderRadius: 999,
+    borderWidth: 3,
+    borderColor: '#1B1F3B',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    ...Shadow.pop,
+  },
+  correctTagTxt: { color: '#1B1F3B', fontSize: 10, fontWeight: '900' },
   unitTxt: { color: Palette.muted, fontSize: 11, fontWeight: '800' },
   ownerChip: {
     flexDirection: 'row',

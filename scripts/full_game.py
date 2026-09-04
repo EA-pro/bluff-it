@@ -115,11 +115,16 @@ def guess_relay(page, rnd):
         if "best guess" in cur:
             val = page.evaluate("""() => {
                 const els = Array.from(document.querySelectorAll('div,span'));
+                let best = null;
                 for (const el of els) {
                     const own = Array.from(el.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent || '').join('');
-                    if (/^-?\\d{1,4}$/.test(own.trim())) return own.trim();
+                    if (!/^-?\\d{1,4}$/.test(own.trim())) continue;
+                    const fs = parseFloat(getComputedStyle(el).fontSize) || 0;
+                    const r = el.getBoundingClientRect();
+                    if (r.width < 4 || r.height < 4) continue;
+                    if (!best || fs > best.fs) best = { s: own.trim(), fs };
                 }
-                return '';
+                return best ? best.s : '';
             }""")
             target = GUESS_VALUES[rnd % len(GUESS_VALUES)]
             if val != target:
@@ -129,7 +134,7 @@ def guess_relay(page, rnd):
                 for d in target:
                     click_text(page, d, exact=True)
                     page.wait_for_timeout(70)
-            assert click_text(page, "Let's go"), f"round {rnd}: lock-in failed"
+            assert click_text(page, "Let\u2019s go"), f"round {rnd}: lock-in failed"
             page.wait_for_timeout(800)
         else:
             page.wait_for_timeout(400)
@@ -138,7 +143,9 @@ def guess_relay(page, rnd):
 def reveal_to_votes(page):
     for _ in range(30):
         cur = text(page)
-        if "one pick" in cur or "THE ANSWER SHOW" in cur:
+        # 'HAND THE PHONE' = the phone-pass handoff that follows 'To the
+        # votes'; vote_relay handles it next, so treat it as arrived.
+        if "one pick" in cur or "THE ANSWER SHOW" in cur or "HAND THE PHONE" in cur:
             return True
         if "To the votes" in cur:
             click_text(page, "To the votes")
@@ -186,37 +193,52 @@ def play_reveal(page):
         if "Answer 1 of" in text(page):
             break
         page.wait_for_timeout(500)
-    page.wait_for_timeout(1600)
     t0 = text(page)
     n_steps = 1
     m = __import__("re").search(r"Answer 1 of (\d+)", t0)
     if m:
         n_steps = int(m.group(1))
-    for s in range(1, n_steps):
-        cur = text(page)
-        if "Next answer" in cur:
-            click_text(page, "Next answer")
-        else:
-            click_text(page, "Show the verdict")
-            page.wait_for_timeout(2800)
-            click_text(page, "Next answer")
-        page.wait_for_timeout(3300)
-    t_last = text(page)
-    truth_shown = "THE TRUTH" in t_last
-    assert click_text(page, "To the scores"), "to scores failed"
+    # Each step: card pops in, VERDICT auto-lands at ~2.3s, which is when the
+    # button flips to "Next answer" / "To the scores". Poll, don't sleep.
+    truth_shown = False
+    cur = ""
+    for s in range(1, n_steps + 1):
+        t1 = time.time()
+        btn = None
+        while time.time() - t1 < 10:
+            cur = text(page)
+            if "To the scores" in cur:
+                btn = "To the scores"; break
+            if "Next answer" in cur:
+                btn = "Next answer"; break
+            page.wait_for_timeout(300)
+        assert btn, f"step {s}: verdict button never landed"
+        if btn == "To the scores":
+            truth_shown = "THE TRUTH" in cur or "THE ANSWER" in cur
+            assert click_text(page, "To the scores"), "to scores failed"
+            break
+        click_text(page, "Next answer")
+        page.wait_for_timeout(600)
     page.wait_for_timeout(1500)
     return n_steps, truth_shown
 
 def scores_to_next(page, rnd, total):
-    """Wait for the scores board + points beat, then continue."""
+    """Wait for the scores board, handle the points beat (auto-reveals at
+    ~5.6s), then continue. Poll instead of fixed sleeps — the auto-reveal
+    and our click race, and either order must work."""
     assert wait_for(page, "The truth was", 12), f"round {rnd}: scores not reached"
-    # let the per-player points beat play, then show points
-    page.wait_for_timeout(4000)
-    click_text(page, "Show the points")
-    page.wait_for_timeout(2500)
     label = "To the champions" if rnd >= total else "Next round"
-    assert click_text(page, label), f"round {rnd}: continue failed ({label})"
-    page.wait_for_timeout(1500)
+    t0 = time.time()
+    while time.time() - t0 < 30:
+        cur = text(page)
+        if label in cur:
+            if click_text(page, label):
+                page.wait_for_timeout(1500)
+                return
+        elif "Show the points" in cur:
+            click_text(page, "Show the points")
+        page.wait_for_timeout(500)
+    assert False, f"round {rnd}: continue failed ({label})"
 
 def main():
     with sync_playwright() as p:

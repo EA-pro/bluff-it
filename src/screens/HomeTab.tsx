@@ -57,7 +57,7 @@ export default function HomeTab({ onTab }: { onTab: (t: TabId) => void }) {
   const moleUsedToday = !premium.premium && !premium.admin && molePlayUsedToday();
   const moleLocked = config.mode === 'mole' && moleUsedToday && !hasMolePass;
 
-  const pickMode = (mode: 'classic' | 'mole') => {
+  const pickMode = (mode: 'classic' | 'mole' | 'words') => {
     setConfig({ mode });
     play(mode === config.mode ? 'tick' : 'pop');
   };
@@ -155,6 +155,30 @@ export default function HomeTab({ onTab }: { onTab: (t: TabId) => void }) {
               </View>
             </LinearGradient>
           </Pressable>
+
+          <Pressable
+            style={[styles.modeCard, config.mode === 'words' && styles.modeCardOn]}
+            onPress={() => pickMode('words')}
+          >
+            <LinearGradient
+              colors={config.mode === 'words' ? ['#FBCFE8', '#C7D2FE'] : ['rgba(255,255,255,0.35)', 'rgba(255,255,255,0.15)']}
+              style={styles.modeCardBg}
+            >
+              <View style={styles.modeLeft}>
+                <Text style={styles.modeEmoji}>✍️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modeName, config.mode === 'words' && styles.modeNameOn]}>{t('mode_words')}</Text>
+                  <Text style={[styles.modeDesc, config.mode === 'words' && styles.modeDescOn]}>{t('mode_words_desc')}</Text>
+                  <Text style={styles.modeChip}>✍️ written answers · no numbers</Text>
+                </View>
+              </View>
+              {config.mode === 'words' ? (
+                <View style={[styles.modeBadge, styles.modeBadgeWords]}>
+                  <Text style={styles.modeBadgeTxt}>✓</Text>
+                </View>
+              ) : null}
+            </LinearGradient>
+          </Pressable>
         </View>
 
         <BigButton label={t('home_play_now')} onPress={playNow} variant="end" style={styles.playBtn} />
@@ -249,6 +273,7 @@ const styles = StyleSheet.create({
   },
   modeBadgeClassic: { backgroundColor: '#FFC53D' },
   modeBadgeMole: { backgroundColor: '#A78BFA' },
+  modeBadgeWords: { backgroundColor: '#F472B6' },
   modeBadgeTxt: { fontSize: 15, fontWeight: '900', color: '#1B1F3B', marginTop: -1 },
   modeLock: { fontSize: 20, backgroundColor: '#fff', borderRadius: 10, borderWidth: 2, borderColor: '#1B1F3B', padding: 3 },
   modeAdTag: { fontSize: 16, backgroundColor: '#fff', borderRadius: 10, borderWidth: 2, borderColor: '#1B1F3B', padding: 3 },
