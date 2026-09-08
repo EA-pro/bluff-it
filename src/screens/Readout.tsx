@@ -5,12 +5,9 @@ import AvatarFace from '@/components/AvatarFace';
 import BigButton from '@/components/BigButton';
 import { useGame } from '@/game/useStore';
 import { readoutNext, readoutDone } from '@/game/store';
-import { optionLetter } from '@/game/engine';
 import { play, haptic } from '@/game/sound';
 import { Palette, Radius, Shadow, Gradients } from '@/constants/theme';
 import { t } from '@/i18n';
-
-const LETTER_COLORS = ['#FF5A5F', '#38BDF8', '#FFC53D', '#7ED957', '#A78BFA', '#F472B6', '#2DD4BF', '#FF8A3D'];
 
 /**
  * The host's READOUT relay — the discussion, out loud.
@@ -57,13 +54,11 @@ export default function Readout() {
         const owner = isTruth ? null : (players.find((p) => p.id === key) ?? null);
         return {
           key,
-          letter: optionLetter(i),
           value,
           textValue,
           owner,
           isTruth,
           unit: round.question.unit,
-          color: LETTER_COLORS[i % LETTER_COLORS.length],
         };
       })
       // same filters as the reveal board: classic/words drop the truth + nulls;
@@ -140,9 +135,6 @@ export default function Readout() {
             ) : opt ? (
               <>
                 <View style={styles.cardTopRow}>
-                  <View style={[styles.letter, { backgroundColor: opt.color }]}>
-                    <Text style={styles.letterTxt}>{opt.letter}</Text>
-                  </View>
                   <Text style={styles.answerCount}>
                     {isWords
                       ? t('ro_answer', { a: answeredSoFar, b: options.length })
@@ -242,16 +234,6 @@ const styles = StyleSheet.create({
   qText: { color: Palette.ink, fontWeight: '900', textAlign: 'center', lineHeight: 1.3 },
   qRead: { fontSize: 16, fontWeight: '900', color: Palette.grape, textAlign: 'center', marginTop: 6 },
   cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
-  letter: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 4,
-    borderColor: '#1B1F3B',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  letterTxt: { color: '#fff', fontSize: 26, fontWeight: '900' },
   answerCount: { fontSize: 13, fontWeight: '800', color: Palette.muted, letterSpacing: 0.5 },
   ownerBig: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Palette.soft, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, borderWidth: 2.5, borderColor: 'rgba(27,31,59,0.2)' },
   ownerName: { color: Palette.ink, fontSize: 20, fontWeight: '900', maxWidth: 130 },

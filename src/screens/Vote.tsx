@@ -6,12 +6,9 @@ import AvatarFace from '@/components/AvatarFace';
 import { useGame } from '@/game/useStore';
 import { useCountdown } from '@/hooks/useCountdown';
 import { submitVote } from '@/game/store';
-import { optionLetter } from '@/game/engine';
 import { play, haptic } from '@/game/sound';
 import { Palette, Radius, Shadow, Gradients } from '@/constants/theme';
 import { t } from '@/i18n';
-
-const LETTER_COLORS = ['#FF5A5F', '#38BDF8', '#FFC53D', '#7ED957', '#A78BFA', '#F472B6', '#2DD4BF', '#FF8A3D'];
 
 /**
  * The picking round. Same anonymous board as the discussion — but now it's
@@ -56,7 +53,7 @@ export default function Vote() {
         const value = key === 'truth' ? (round.question.truth ?? 0) : (round.guesses[key] ?? null);
         const textValue = key === 'truth' ? round.question.truthText ?? null : (texts[key] ?? null);
         const owner = players.find((p) => p.id === key) ?? null;
-        return { key, letter: optionLetter(i), value, textValue, isOwn: key === me.id, owner, color: LETTER_COLORS[i % LETTER_COLORS.length] };
+        return { key, value, textValue, isOwn: key === me.id, owner };
       })
       .filter((c): c is typeof c & { value: number; textValue: string | null } =>
         isWords ? c.textValue != null : c.value != null
@@ -116,9 +113,6 @@ export default function Vote() {
                   lockedRef.current && !active && !c.isOwn && styles.cardDim,
                 ]}
               >
-                <View style={[styles.letter, { backgroundColor: c.color }]}>
-                  <Text style={styles.letterTxt}>{c.letter}</Text>
-                </View>
                 {isWords ? (
                   <Text style={[styles.wordValue, { fontSize: sm ? 11 : 13 }]} numberOfLines={4}>
                     “{c.textValue}”
@@ -195,19 +189,6 @@ const styles = StyleSheet.create({
   cardDim: { opacity: 0.4 },
   cardOwn: { backgroundColor: '#EDEAF7', borderColor: 'rgba(27,31,59,0.35)', opacity: 0.55 },
   ownTag: { fontSize: 10, fontWeight: '900', color: Palette.muted, letterSpacing: 1 },
-  letter: {
-    position: 'absolute',
-    top: -10,
-    left: -10,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 3,
-    borderColor: '#1B1F3B',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  letterTxt: { color: '#fff', fontSize: 16, fontWeight: '900' },
   value: { color: Palette.ink, fontSize: 28, fontWeight: '900', fontVariant: ['tabular-nums'], maxWidth: '100%', textAlign: 'center' },
   wordValue: { color: Palette.ink, fontWeight: '800', maxWidth: '100%', textAlign: 'center', lineHeight: 16 },
   ownerChip: {

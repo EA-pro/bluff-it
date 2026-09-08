@@ -7,12 +7,9 @@ import BigButton from '@/components/BigButton';
 import { useGame } from '@/game/useStore';
 import { useCountdown } from '@/hooks/useCountdown';
 import { revealDone } from '@/game/store';
-import { optionLetter } from '@/game/engine';
 import { play, haptic } from '@/game/sound';
 import { Palette, Radius, Shadow, Gradients } from '@/constants/theme';
 import { t } from '@/i18n';
-
-const LETTER_COLORS = ['#FF5A5F', '#38BDF8', '#FFC53D', '#7ED957', '#A78BFA', '#F472B6', '#2DD4BF', '#FF8A3D'];
 
 /**
  * The reveal / discussion board.
@@ -79,13 +76,11 @@ export default function Reveal() {
         const owner = players.find((p) => p.id === key) ?? null;
         return {
           key,
-          letter: optionLetter(i),
           value,
           textValue,
           isTruth: key === 'truth',
           owner,
           unit: round.question.unit,
-          color: LETTER_COLORS[i % LETTER_COLORS.length],
         };
       })
       // mole mode: no truth card at all; words: drop nulls; classic: drop nulls
@@ -175,9 +170,6 @@ export default function Reveal() {
               ]}
             >
               <View style={styles.card}>
-                <View style={[styles.letter, { backgroundColor: c.color }]}>
-                  <Text style={styles.letterTxt}>{c.letter}</Text>
-                </View>
                 {isWords ? (
                   <Text
                     style={[styles.wordValue, { fontSize: tight ? 11 : sm ? 12.5 : 14 }]}
@@ -295,19 +287,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Shadow.pop,
   },
-  letter: {
-    position: 'absolute',
-    top: -10,
-    left: -10,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 3,
-    borderColor: '#1B1F3B',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  letterTxt: { color: '#fff', fontSize: 16, fontWeight: '900' },
   value: { color: Palette.ink, fontSize: 26, fontWeight: '900', fontVariant: ['tabular-nums'], maxWidth: '100%', textAlign: 'center' },
   wordValue: { color: Palette.ink, fontWeight: '800', maxWidth: '100%', textAlign: 'center', lineHeight: 18 },
   correctTag: {
