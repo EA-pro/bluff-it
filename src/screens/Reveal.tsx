@@ -143,8 +143,6 @@ export default function Reveal() {
           </Text>
           {isMole ? (
             <Text style={styles.qBannerSub}>{t('reveal_mole_note')}</Text>
-          ) : isWords ? (
-            <Text style={styles.qBannerSub}>{t('reveal_words_note')}</Text>
           ) : null}
         </View>
 

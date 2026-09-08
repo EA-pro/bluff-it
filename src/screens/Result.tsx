@@ -206,7 +206,7 @@ export default function Result() {
         <View style={styles.stepTop}>
           <View style={styles.stepPill}>
             <Text style={styles.stepPillTxt}>
-              {t('res_reveal_label')} · {roundIndex + 1}/{config.rounds}
+              {roundIndex + 1}/{config.rounds}
             </Text>
           </View>
           <View style={styles.dots}>
@@ -314,14 +314,21 @@ export default function Result() {
               >
                 <Text style={styles.verdictEmoji}>{cur.isTruth ? '✅' : '🎭'}</Text>
                 <View style={styles.verdictMid}>
-                  <Text style={[styles.verdictTitle, cur.isTruth ? styles.verdictTitleTruth : styles.verdictTitleLie]}>
-                    {cur.isTruth
-                      ? isWords ? t('res_words_verdict') : t('res_truth_verdict')
-                      : isWords ? t('res_words_lie') : t('res_lie')}
-                  </Text>
-                  <Text style={[styles.verdictSub, cur.isTruth && styles.verdictSubTruth]}>
-                    {cur.isTruth ? t('res_truth_was') : cur.author ? t('res_lie_by', cur.author.name) : ''}
-                  </Text>
+                  <Text
+                  style={[styles.verdictTitle, cur.isTruth ? styles.verdictTitleTruth : styles.verdictTitleLie]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {cur.isTruth
+                    ? isWords
+                      ? t('res_words_verdict')
+                      : t('res_truth_verdict')
+                    : cur.author
+                      ? t('res_lie_by', cur.author.name)
+                      : isWords
+                        ? t('res_words_lie')
+                        : t('res_lie')}
+                </Text>
                 </View>
               </Animated.View>
             ) : null}
@@ -387,9 +394,7 @@ export default function Result() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View style={{ opacity: popIn, transform: [{ scale: popIn }] }}>
           <View style={styles.truthCard}>
-            <Text style={styles.truthEyebrow}>
-              {isWords ? t('res_words_reveal') : t('res_truth')}
-            </Text>
+            <Text style={styles.truthEyebrow}>{t('res_truth')}</Text>
             {isWords && wordsTruthText != null ? (
               <Text style={styles.truthWords} numberOfLines={4} adjustsFontSizeToFit>
                 “{wordsTruthText}”
@@ -400,15 +405,8 @@ export default function Result() {
                 {result.unit ? <Text style={styles.truthUnit}> {result.unit}</Text> : null}
               </Text>
             )}
-            {isWords
-              ? (
-                  <View style={styles.winnerRow}>
-                    <Text style={styles.winnerTxt}>
-                      {t('res_words_nobody')}
-                    </Text>
-                  </View>
-                )
-              : exact.length > 0 ? (
+            {!isWords &&
+              (exact.length > 0 ? (
                   <View style={styles.winnerRow}>
                     <AvatarFace avatarId={exact[0].avatarId} size={40} />
                     <Text style={styles.winnerTxt}>
@@ -422,11 +420,7 @@ export default function Result() {
                       {t('res_closest', closest.map((p) => p.name).join(' + '))}
                     </Text>
                   </View>
-                ) : (
-                  <View style={[styles.winnerRow, styles.nobodyRow]}>
-                    <Text style={styles.nobodyTxt}>{t('res_nobody')}</Text>
-                  </View>
-                )}
+                ) : null)}
           </View>
         </Animated.View>
 
@@ -435,9 +429,15 @@ export default function Result() {
             <Text style={styles.boardTitle}>{t('res_board')}</Text>
             {byPts.map((p, i) => {
               const row = result.rows.find((r) => r.playerId === p.id)!;
+              const pts = row.pts;
               const fooledNames = row.fooled
                 .map((fid) => players.find((x) => x.id === fid)?.name)
                 .filter(Boolean);
+              // points fade in on the second beat (showPts) via ptsIn
+              const ptsDelay = ptsIn.interpolate({
+                inputRange: [0, Math.min(0.98, 0.5 + i * 0.12), 1],
+                outputRange: [0, 0, 1],
+              });
               return (
                 <Animated.View
                   key={p.id}
@@ -452,14 +452,29 @@ export default function Result() {
                     ],
                   }}
                 >
-                  <View style={styles.row}>
+                  <View
+                    style={[
+                      styles.row,
+                      showPts && pts === maxRoundPts && pts > 0 && styles.rowTop,
+                      showPts && p.id === result.biggestBluffId && styles.rowBluff,
+                    ]}
+                  >
+                    {showPts && pts === maxRoundPts && pts > 0 ? (
+                      <Text style={styles.crown}>👑</Text>
+                    ) : (
+                      <View style={{ width: 20 }} />
+                    )}
                     <AvatarFace avatarId={p.avatarId} size={38} />
                     <View style={styles.rowMid}>
                       <Text style={styles.rowName} numberOfLines={1}>
                         {p.name} <Text style={styles.rowGuess}>
                           {isWords
-                            ? wordsGuessOf(p.id) != null ? `· ${wordsGuessOf(p.id)}` : t('res_words_skip')
-                            : row.guess != null ? `· ${row.guess.toLocaleString('en-US')}` : t('no_guess')}
+                            ? wordsGuessOf(p.id) != null
+                              ? `· ${wordsGuessOf(p.id)}`
+                              : t('res_words_skip')
+                            : row.guess != null
+                              ? `· ${row.guess.toLocaleString('en-US')}`
+                              : t('no_guess')}
                         </Text>
                       </Text>
                       <View style={styles.rowTags}>
@@ -473,48 +488,26 @@ export default function Result() {
                             {t('res_fooled', fooledNames.join(', '))}
                           </Text>
                         )}
+                        {showPts &&
+                          row.parts.map((part, j) => (
+                            <Text key={j} style={[styles.rowTag, part.startsWith('+') && styles.rowTagWin]}>
+                              {part}
+                            </Text>
+                          ))}
                       </View>
                     </View>
+                    {showPts ? (
+                      <Animated.View style={{ opacity: ptsDelay }}>
+                        <Text style={[styles.rowPts, pts > 0 && styles.rowPtsWin]}>
+                          {pts > 0 ? `+${pts}` : '0'}
+                        </Text>
+                      </Animated.View>
+                    ) : null}
                   </View>
                 </Animated.View>
               );
             })}
           </View>
-        )}
-
-        {showPts && (
-          <Animated.View style={[styles.ptsWrap, { opacity: ptsIn }]}>
-            <Text style={styles.boardTitle}>{t('res_pts')}</Text>
-            {byPts.map((p, i) => {
-              const row = result.rows.find((r) => r.playerId === p.id)!;
-              const pts = row.pts;
-              // NOTE: clamp the stagger stop below 1 — with 6 players,
-              // 0.5 + i*0.12 reaches 1.1, a non-monotonic inputRange that
-              // throws and blanks the whole result screen.
-              const delayed = ptsIn.interpolate({
-                inputRange: [0, Math.min(0.98, 0.5 + i * 0.12), 1],
-                outputRange: [0, 0, 1],
-              });
-              return (
-                <Animated.View key={p.id} style={{ opacity: delayed }}>
-                  <View style={[styles.row, pts === maxRoundPts && pts > 0 && styles.rowTop, p.id === result.biggestBluffId && styles.rowBluff]}>
-                    {pts === maxRoundPts && pts > 0 ? <Text style={styles.crown}>👑</Text> : <View style={{ width: 20 }} />}
-                    <View style={styles.rowMid}>
-                      <Text style={styles.rowName} numberOfLines={1}>
-                        {p.name}
-                      </Text>
-                      <View style={styles.rowTags}>
-                        {row.parts.map((part, j) => (
-                          <Text key={j} style={[styles.rowTag, part.startsWith('+') && styles.rowTagWin]}>{part}</Text>
-                        ))}
-                      </View>
-                    </View>
-                    <Text style={[styles.rowPts, pts > 0 && styles.rowPtsWin]}>{pts > 0 ? `+${pts}` : '0'}</Text>
-                  </View>
-                </Animated.View>
-              );
-            })}
-          </Animated.View>
         )}
 
         {showPts && (

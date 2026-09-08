@@ -92,7 +92,7 @@ export default function Vote() {
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyInner} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { fontSize: sm ? 19 : 24 }]}>{t('vote_title')}</Text>
         <Text style={styles.subtitle}>
-          {isMole ? t('vote_sub_mole') : isWords ? t('vote_sub_words') : t('vote_sub_classic')}
+          {isMole ? t('vote_sub_mole') : t('vote_sub_classic')}
         </Text>
 
         <View style={styles.grid}>
