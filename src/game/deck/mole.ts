@@ -23,12 +23,12 @@ const q = (
 export const MOLE: MolePair[] = [
   {
     id: 'mp1',
-    base: q('mp1b', 'How many minutes of sleep do adults need each night?', 8, 'hrs'),
+    base: q('mp1b', 'How many hours of sleep do adults need each night?', 8, 'hrs'),
     mole: q('mp1m', 'How many hours do newborn babies sleep each day?', 16, 'hrs'),
   },
   {
     id: 'mp2',
-    base: q('mp2b', 'About how many minutes is a full marathon (in km)?', 42, 'km'),
+    base: q('mp2b', 'How many kilometers is a full marathon?', 42, 'km'),
     mole: q('mp2m', 'How long is a half marathon, in km?', 21, 'km'),
   },
   {
@@ -43,8 +43,8 @@ export const MOLE: MolePair[] = [
   },
   {
     id: 'mp5',
-    base: q('mp5b', 'How many levels does the Eiffel Tower have?', 3),
-    mole: q('mp5m', 'About how many floors is the Empire State Building?', 102),
+    base: q('mp5b', 'How tall is the Eiffel Tower?', 325, 'm'),
+    mole: q('mp5m', 'How tall is the Empire State Building?', 381, 'm'),
   },
   {
     id: 'mp6',
@@ -74,7 +74,7 @@ export const MOLE: MolePair[] = [
   {
     id: 'mp11',
     base: q('mp11b', 'Roughly how many minutes is a movie, on average?', 110, 'min'),
-    mole: q('mp11m', 'How long is the average TV episode (sitcom) on average?', 22, 'min'),
+    mole: q('mp11m', 'How long is a typical sitcom episode?', 22, 'min'),
   },
   {
     id: 'mp12',
@@ -93,7 +93,7 @@ export const MOLE: MolePair[] = [
   },
   {
     id: 'mp15',
-    base: q('mp15b', 'About how many minutes to boil an egg for a soft yolk?', 6, 'min'),
+    base: q('mp15b', 'About how many minutes to boil an egg for a soft yolk?', 9, 'min'),
     mole: q('mp15m', 'How many minutes for a fully hard-boiled egg?', 12, 'min'),
   },
   {
@@ -109,7 +109,7 @@ export const MOLE: MolePair[] = [
   {
     id: 'mp18',
     base: q('mp18b', 'How many minutes is a standard (half-hour) TV slot?', 30, 'min'),
-    mole: q('mp18m', 'How many minutes is a standard "half hour" actually billed as?', 22, 'min'),
+    mole: q('mp18m', 'How many minutes of airtime does a "half-hour" TV slot actually deliver?', 22, 'min'),
   },
   {
     id: 'mp19',

@@ -64,14 +64,14 @@ const EN: W[] = [
   ['c04', 'geo', 'What is the largest desert in the world?', 'The Antarctic Desert'],
   ['c05', 'geo', 'What is the longest river in the world?', 'The Nile'],
   ['c06', 'geo', 'What country has the most time zones, counting territories?', 'France (18)'],
-  ['c07', 'geo', 'What are the only two countries whose flag is not a rectangle?', 'Nepal and Bangladesh'],
+  ['c07', 'geo', 'What is the only country whose flag is not a rectangle?', 'Nepal'],
   ['c08', 'geo', 'What country has the most islands?', 'Sweden'],
   // animals (paid)
   ['a01', 'animals', 'What is the tallest land animal?', 'Giraffe'],
   ['a02', 'animals', 'What colour is an octopus\' blood?', 'Blue'],
-  ['a03', 'animals', 'How many eyes does a giant clam have?', 'About 100 000'],
+  ['a03', 'animals', 'How many eyes does a giant clam have?', 'About 200 000'],
   ['a04', 'animals', 'What do you call a group of wild boars?', 'A sound'],
-  ['a05', 'animals', 'What animal has the most teeth of any land animal?', 'Shark (≈30 000 over its life)'],
+  ['a05', 'animals', 'What land animal has the most teeth?', 'Hippopotamus (≈40)'],
 ];
 
 // ---------------------------------------------------------------- DE
@@ -92,12 +92,12 @@ const DE: Record<string, { text: string; truthText: string }> = {
   f04:{text:'Die Universität Oxford ist älter als welches Imperium?',truthText:'Das Azteken-Reich'},
   f05:{text:'Was ist das älteste Lebewesen der Erde (ungefähres Alter)?',truthText:'Ca. 5 000 Jahre alt'},
   f06:{text:'Was ist das einzige Lebensmittel, das für Hamster giftig ist?',truthText:'Avocado'},
-  f07:{text:'Was ist das kleinste Primat der Welt?',truthText:'Mausmaulmeerkatze'},
-  f08:{text:'Wie oft kneift der Durchschnittsmensch pro Tag die Augen zu?',truthText:'Ca. 10 000 Mal'},
+  f07:{text:'Was ist das kleinste Primat der Welt?',truthText:'Der Mausmaki'},
+  f08:{text:'Wie oft blinzelt der Durchschnittsmensch pro Tag?',truthText:'Ca. 10 000 Mal'},
   f09:{text:'Wie viele Muskeln hat der menschliche Körper?',truthText:'Ca. 600'},
   x01:{text:'Wie viele Menschen küsst der Durchschnittsmensch im Laufe seines Lebens?',truthText:'Ca. 130'},
   x02:{text:'Wie lang ist ein „guter" Umarmung, laut Forschung?',truthText:'Ca. 20 Sekunden'},
-  x03:{text:'Wie lang dauert die durchschnittliche Vorzeit?',truthText:'Ca. 13 Minuten'},
+  x03:{text:'Wie lang dauert das durchschnittliche Vorspiel?',truthText:'Ca. 13 Minuten'},
   x04:{text:'Wie viele Kalorien verbrennt ein leidenschaftlicher Kuss pro Minute?',truthText:'6'},
   x05:{text:'Wie schnell schlägt dein Herz bei einem leidenschaftlichen Kuss ungefähr?',truthText:'Ca. 100 bpm'},
   x06:{text:'Wie viele Stunden am Tag verbringen frisch Verliebte ungefähr zusammen?',truthText:'Ca. 5 Stunden'},
@@ -109,13 +109,13 @@ const DE: Record<string, { text: string; truthText: string }> = {
   c04:{text:'Was ist die größte Wüste der Welt?',truthText:'Die Antarktische Wüste'},
   c05:{text:'Was ist der längste Fluss der Welt?',truthText:'Der Nil'},
   c06:{text:'Welches Land hat die meisten Zeitzonen, inkl. Territorien?',truthText:'Frankreich (18)'},
-  c07:{text:'Welche zwei Länder haben die einzigen Flaggen, die kein Rechteck sind?',truthText:'Nepal und Bangladesch'},
+  c07:{text:'Welches Land hat die einzige Flagge, die kein Rechteck ist?',truthText:'Nepal'},
   c08:{text:'Welches Land hat die meisten Inseln?',truthText:'Schweden'},
   a01:{text:'Was ist das höchste Landtier?',truthText:'Giraffe'},
   a02:{text:'Welche Farbe hat das Blut eines Oktopus?',truthText:'Blau'},
-  a03:{text:'Wie viele Augen hat eine Riesenspiralmuschel?',truthText:'Ca. 100 000'},
+  a03:{text:'Wie viele Augen hat eine Riesenspiralmuschel?',truthText:'Ca. 200 000'},
   a04:{text:'Wie nennt man eine Herde Wildschweine?',truthText:'Ein Sound'},
-  a05:{text:'Welches Landtier hat die meisten Zähne?',truthText:'Haifisch (≈30 000 im Leben)'},
+  a05:{text:'Welches Landtier hat die meisten Zähne?',truthText:'Nilpferd (≈38)'},
 };
 
 // ---------------------------------------------------------------- NL
@@ -141,7 +141,7 @@ const NL: Record<string, { text: string; truthText: string }> = {
   f09:{text:'Hoeveel spieren heeft het menselijk lichaam?',truthText:'Ongeveer 600'},
   x01:{text:'Hoeveel mensen kust de gemiddelde persoon in een leven?',truthText:'Ongeveer 130'},
   x02:{text:'Hoe lang is een "goede" omhelzing volgens onderzoek?',truthText:'Ongeveer 20 seconden'},
-  x03:{text:'Hoe lang duurt gemiddeld de voorafgang?',truthText:'Ongeveer 13 minuten'},
+  x03:{text:'Hoe lang duurt de gemiddelde “voor”?',truthText:'Ongeveer 13 minuten'},
   x04:{text:'Hoeveel calorieën verbrandt een passievol kusje per minuut?',truthText:'6'},
   x05:{text:'Hoe snel slaat je hart gemiddeld tijdens een passievol kusje?',truthText:'Ongeveer 100 bpm'},
   x06:{text:'Hoeveel uur per dag brengen pas verliefde koppels gemiddeld samen door?',truthText:'Ongeveer 5 uur'},
@@ -153,13 +153,13 @@ const NL: Record<string, { text: string; truthText: string }> = {
   c04:{text:'Wat is de grootste woestijn ter wereld?',truthText:'De Antarctische woestijn'},
   c05:{text:'Wat is de langste rivier ter wereld?',truthText:'De Nijl'},
   c06:{text:'Welk land heeft de meeste tijdzones, inclusief territoria?',truthText:'Frankrijk (18)'},
-  c07:{text:'Welke twee landen hebben de enige vlaggen die geen rechthoek zijn?',truthText:'Nepal en Bangladesh'},
+  c07:{text:'Welk land heeft de enige vlag die geen rechthoek is?',truthText:'Nepal'},
   c08:{text:'Welk land heeft het meest eilanden?',truthText:'Zweden'},
   a01:{text:'Wat is het hoogste landdier?',truthText:'Giraffe'},
   a02:{text:'Welke kleur heeft het bloed van een octopus?',truthText:'Blauw'},
-  a03:{text:'Hoeveel ogen heeft een reuzenmossel?',truthText:'Ongeveer 100 000'},
+  a03:{text:'Hoeveel ogen heeft een reuzenmossel?',truthText:'Ongeveer 200 000'},
   a04:{text:'Hoe noem je een kudde wilde zwijnen?',truthText:'Een sound'},
-  a05:{text:'Welk landdier heeft de meeste tanden?',truthText:'Haai (≈30 000 in een leven)'},
+  a05:{text:'Welk landdier heeft de meeste tanden?',truthText:'Nijlpaard (≈38)'},
 };
 
 const EN_ALL: WordsPrompt[] = EN.map(([id, cat, text, truthText]) => P(id, cat, text, truthText));
