@@ -251,6 +251,26 @@ export default function Result() {
                   </Text>
                 )}
                 {cur.textValue == null && round.question.unit ? <Text style={styles.bigUnit}>{round.question.unit}</Text> : null}
+                {/* the correct mark lives INSIDE the card and springs in at the
+                    verdict beat — same pop as the verdict bar, not a label under it */}
+                {showVerdict && cur.isTruth ? (
+                  <Animated.View
+                    style={{
+                      position: 'absolute',
+                      top: -16,
+                      right: -16,
+                      opacity: verdictIn,
+                      transform: [
+                        { scale: verdictIn.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) },
+                        { rotate: `${(cur.key.charCodeAt(0) % 2 === 0 ? -1 : 1) * 8}deg` },
+                      ],
+                    }}
+                  >
+                    <View style={styles.correctMark}>
+                      <Text style={styles.correctMarkTxt}>{t('correct_mark')}</Text>
+                    </View>
+                  </Animated.View>
+                ) : null}
               </View>
             </Animated.View>
 
@@ -817,6 +837,17 @@ const styles = StyleSheet.create({
     ...Shadow.pop,
   },
   bigCardTruth: { backgroundColor: '#F0FDF4', borderColor: '#1F7A2E' },
+  // the in-card correct mark — springs in on the verdict beat
+  correctMark: {
+    backgroundColor: '#FFC53D',
+    borderRadius: 999,
+    borderWidth: 3,
+    borderColor: '#1B1F3B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    ...Shadow.pop,
+  },
+  correctMarkTxt: { color: '#1B1F3B', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
   bigValue: { color: Palette.ink, fontSize: 48, fontWeight: '900', fontVariant: ['tabular-nums'], textAlign: 'center' },
   bigValueSm: { fontSize: 38 },
   bigWord: { color: Palette.ink, fontSize: 30, fontWeight: '800', textAlign: 'center', lineHeight: 40 },
