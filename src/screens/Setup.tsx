@@ -6,7 +6,7 @@ import BigButton from '@/components/BigButton';
 import { AVATARS, isPremiumAvatar, EXCLUSIVE_AVATARS } from '@/game/avatars';
 import { getFaceEmoji } from '@/game/facepick';
 import { useGame } from '@/game/useStore';
-import { addPlayer, removePlayer, startGame, setConfig, goHome } from '@/game/store';
+import { addPlayer, removePlayer, startGame, setConfig, setHostId, goHome } from '@/game/store';
 import { usePremium, scansLeftToday, consumeFaceScan, FACE_SCAN_FREE_PER_DAY } from '@/game/premium';
 import { useAds, grantAvatarPass, consumeAvatarPass, completeAd } from '@/game/ads';
 import PremiumSheet from '@/components/PremiumSheet';
@@ -26,7 +26,7 @@ import type { CategoryId } from '@/game/types';
  * (3/day free, unlimited on premium).
  */
 export default function Setup() {
-  const { players, config } = useGame();
+  const { players, config, hostId } = useGame();
   const premium = usePremium();
   const [name, setName] = useState('');
   const [avatarId, setAvatarId] = useState(AVATARS[0].id);
@@ -54,9 +54,21 @@ export default function Setup() {
 
   // The picker only shows avatars nobody is using yet.
   const picker = AVATARS.filter((a) => !takenIds.has(a.id));
-  const current = picker.find((a) => a.id === avatarId) ?? picker[0] ?? AVATARS[0];
+  // A face-scan pick (`em-*` / `bm-*`) is NOT in AVATARS — it must be used
+  // as-is, otherwise it silently falls back to the first normal avatar.
+  const scannedId = avatarId.startsWith('em-') || avatarId.startsWith('bm-') ? avatarId : null;
+  const current = scannedId ? null : picker.find((a) => a.id === avatarId) ?? picker[0] ?? AVATARS[0];
+  const scannedEmoji = scannedId ? getFaceEmoji(scannedId)?.emoji : undefined;
 
   function onAdd() {
+    if (scannedId) {
+      // face-scan pick: use exactly the emoji the AI offered and the player chose
+      addPlayer(name.trim() || `Player ${players.length + 1}`, scannedId, players.length);
+      setName('');
+      setAvatarId(AVATARS[0].id);
+      return;
+    }
+    if (!current) return;
     // premium avatar guard (covers the case where the current avatar is
     // crown-tier but this device just lost premium somehow)
     const viaPass = current.premium && !isPro && passId === current.id;
@@ -136,15 +148,48 @@ export default function Setup() {
             <View key={p.id} style={styles.playerRow}>
               <View style={styles.playerAvatar}>
                 <AvatarFace avatarId={p.avatarId} size={48} />
+                {p.id === hostId && (
+                  <Text style={styles.hostCrown}>👑</Text>
+                )}
                 <View style={[styles.teamDot, { backgroundColor: TEAM_COLORS[i % TEAM_COLORS.length] }]} />
               </View>
-              <Text style={styles.playerName}>{p.name}</Text>
+              <Text style={styles.playerName}>
+                {p.name}
+                {p.id === hostId ? '  👑' : ''}
+              </Text>
               <Text style={styles.playerPts}>{t('ready')}</Text>
               <Pressable onPress={() => removePlayer(p.id)} style={styles.del} hitSlop={10}>
                 <Text style={{ color: '#fff', fontWeight: '900', fontSize: 16 }}>✕</Text>
               </Pressable>
             </View>
           ))}
+
+          <View style={styles.roundsCard}>
+            <Text style={styles.addLabel}>👑 {t('host')}</Text>
+            <Text style={styles.discussSub}>{t('host_sub')}</Text>
+            <View style={styles.hostRow}>
+              {players.map((p) => {
+                const isHost = p.id === hostId;
+                return (
+                  <Pressable
+                    key={p.id}
+                    hitSlop={6}
+                    onPress={() => {
+                      setHostId(isHost ? null : p.id);
+                      play(isHost ? 'tick' : 'win');
+                    }}
+                    style={[styles.hostPick, isHost && styles.hostPickOn]}
+                  >
+                    {isHost && <Text style={styles.hostPickCrown}>👑</Text>}
+                    <AvatarFace avatarId={p.avatarId} size={40} />
+                    <Text style={[styles.hostPickName, isHost && styles.hostPickNameOn]} numberOfLines={1}>
+                      {p.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
 
           {!full && (
             <View style={styles.addCard}>
@@ -160,6 +205,20 @@ export default function Setup() {
                 onSubmitEditing={onAdd}
               />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.avScroll}>
+                {scannedId && (
+                  <View style={styles.scannedPick}>
+                    <View style={[styles.scannedFace, { backgroundColor: '#FFE28A' }]}>
+                      <Text style={{ fontSize: 30, lineHeight: 34 }}>{scannedEmoji ?? '🎭'}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.scannedTitle}>📸 SCANNED FACE</Text>
+                      <Text style={styles.scannedSub}>the AI picked this one for you ✓</Text>
+                    </View>
+                    <Pressable hitSlop={8} onPress={() => setAvatarId(picker[0]?.id ?? AVATARS[0].id)}>
+                      <Text style={styles.scannedClear}>✕</Text>
+                    </Pressable>
+                  </View>
+                )}
                 {picker.map((a) => {
                   const hasPassFor = !isPro && a.premium && passId === a.id;
                   const lockedAv = a.premium && !isPro && !hasPassFor;
@@ -176,7 +235,7 @@ export default function Setup() {
                           setAvatarId(a.id);
                         }
                       }}
-                      style={[styles.avPick, current.id === a.id && !lockedAv && styles.avPickOn, lockedAv && styles.avPickLocked]}
+                      style={[styles.avPick, current?.id === a.id && !lockedAv && !scannedId && styles.avPickOn, lockedAv && styles.avPickLocked]}
                     >
                       {lockedAv && <Text style={styles.avLock}>🔒</Text>}
                       {hasPassFor && <Text style={styles.avLock}>📺</Text>}
@@ -351,6 +410,24 @@ const styles = StyleSheet.create({
   },
   playerAvatar: { position: 'relative', marginRight: 12 },
   teamDot: { position: 'absolute', bottom: -2, right: -2, width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#1B1F3B' },
+  hostCrown: { position: 'absolute', top: -10, left: -8, fontSize: 20, transform: [{ rotate: '18deg' }], zIndex: 3 },
+  hostRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  hostPick: {
+    width: 76,
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: Radius.md,
+    backgroundColor: Palette.soft,
+    borderWidth: 3,
+    borderColor: 'rgba(27,31,59,0.25)',
+    position: 'relative',
+  },
+  hostPickOn: { backgroundColor: '#FFF3C4', borderColor: '#1B1F3B', transform: [{ scale: 1.05 }], ...Shadow.pop },
+  hostPickCrown: { position: 'absolute', top: -14, fontSize: 22, transform: [{ rotate: '12deg' }], zIndex: 3 },
+  hostPickName: { fontSize: 11, fontWeight: '900', color: Palette.muted, maxWidth: 66, textAlign: 'center' },
+  hostPickNameOn: { color: Palette.ink },
   playerName: { flex: 1, fontSize: 17, fontWeight: '900', color: Palette.ink },
   playerPts: { fontSize: 11, fontWeight: '800', color: Palette.muted, marginRight: 10 },
   del: { width: 30, height: 30, borderRadius: 15, backgroundColor: Palette.coral, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: '#1B1F3B' },
@@ -372,6 +449,11 @@ const styles = StyleSheet.create({
   avPick: { width: 52, height: 52, borderRadius: 26, marginHorizontal: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 3.5, borderColor: 'transparent', position: 'relative' },
   avPickOn: { borderColor: Palette.ink, backgroundColor: Palette.soft },
   avPickLocked: { opacity: 0.55 },
+  scannedPick: { flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: 10, backgroundColor: '#FFF9E8', borderRadius: 18, borderWidth: 3, borderColor: Palette.sunshine, padding: 8, paddingRight: 6, position: 'relative' },
+  scannedFace: { width: 44, height: 44, borderRadius: 22, borderWidth: 2.5, borderColor: '#1B1F3B', alignItems: 'center', justifyContent: 'center' },
+  scannedTitle: { fontSize: 11, fontWeight: '900', color: Palette.ink, letterSpacing: 0.8 },
+  scannedSub: { fontSize: 10, fontWeight: '700', color: Palette.muted },
+  scannedClear: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', borderWidth: 2, borderColor: 'rgba(27,31,59,0.35)', alignItems: 'center', justifyContent: 'center', color: Palette.ink, fontWeight: '900', fontSize: 12 },
   avLock: { position: 'absolute', top: -4, right: -4, fontSize: 14, zIndex: 2 },
   avCrown: { position: 'absolute', top: -4, right: -4, fontSize: 12, zIndex: 2 },
   scanBtn: {

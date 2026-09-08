@@ -20,6 +20,8 @@ const freshState = (): GameState => ({
   cursor: 0,
   handoffKind: 'guess',
   timerEndsAt: null,
+  hostId: null,
+  readoutIdx: -1,
 });
 
 let state: GameState = freshState();
@@ -80,8 +82,20 @@ export function addPlayer(name: string, avatarId: string, team: number) {
 }
 
 export function removePlayer(id: string) {
-  state = { ...state, players: state.players.filter((p) => p.id !== id) };
+  state = {
+    ...state,
+    players: state.players.filter((p) => p.id !== id),
+    hostId: state.hostId === id ? null : state.hostId,
+  };
   play('tick');
+  emit();
+}
+
+/** Pick (or clear) the Game Host — the player who reads the question aloud
+ *  (non-mole modes) and calls every answer one by one during the discussion. */
+export function setHostId(id: string | null) {
+  state = { ...state, hostId: id };
+  play('pop');
   emit();
 }
 
@@ -122,6 +136,8 @@ function isProNow(): boolean {
 export function startGame() {
   const isMole = state.config.mode === 'mole';
   const isWords = state.config.mode === 'words';
+  // host must be one of the current players (setup guards this too)
+  const hostId = state.hostId && state.players.some((p) => p.id === state.hostId) ? state.hostId : null;
   const qLang = getQLang();
   // paid categories covered by gacha passes: the Setup picker already gates
   // on (premium || owned || pass), so anything left here is playable.
@@ -134,7 +150,7 @@ export function startGame() {
     // deck = the base questions of the same pairs, so moleDeck[i] pairs round i.
     const all = buildMoleDeck(qLang);
     const pairs = shuffle(all).slice(0, Math.min(state.config.rounds, all.length));
-    state = makeGame(state.players, state.config, pairs.map((p) => p.base), pairs);
+    state = makeGame(state.players, state.config, pairs.map((p) => p.base), pairs, hostId);
     state.timerEndsAt = Date.now() + state.config.readSeconds * 1000;
     play('slide');
     emit();
@@ -145,7 +161,7 @@ export function startGame() {
     // answers, same category mix as classic (free: general+funny).
     const all = buildWordsDeck(state.config.categories as ('general' | 'funny' | 'sexy' | 'geo' | 'animals')[], qLang);
     const deck = shuffle(all).slice(0, Math.min(state.config.rounds, all.length)).map(wordsPromptToQuestion);
-    state = makeGame(state.players, state.config, deck, []);
+    state = makeGame(state.players, state.config, deck, [], hostId);
     state.deck = deck;
     state.timerEndsAt = Date.now() + state.config.readSeconds * 1000;
     play('slide');
@@ -154,7 +170,7 @@ export function startGame() {
   }
   const all = buildClassicDeck(state.config.categories, qLang);
   const deck = shuffle(all).slice(0, Math.min(state.config.rounds, all.length));
-  state = makeGame(state.players, state.config, deck, []);
+  state = makeGame(state.players, state.config, deck, [], hostId);
   state.deck = deck;
   state.timerEndsAt = Date.now() + state.config.readSeconds * 1000;
   play('slide');
@@ -313,17 +329,61 @@ export function submitWordsGuess(text: string | null) {
   emit();
 }
 
-/** Discussion timer ended or "to the votes" tapped -> first voter. */
+/** Discussion timer ended or "to the votes" tapped.
+ *  If a host was crowned, the group goes through the host's READOUT relay
+ *  first (question read aloud in non-mole + every answer called one by one);
+ *  without a host we jump straight to the first voter as before. */
 export function revealDone() {
   const isMole = state.config.mode === 'mole';
-  // mole mode: the hunt goes to EVERYONE in order — including the Mole,
-  // so nobody can tell who skipped a turn. The Mole's accusation still
-  // doesn't count (scoreMoleRound only tallies the hunters).
+  const hasHost = !!state.hostId && state.players.some((p) => p.id === state.hostId);
+  if (hasHost) {
+    // -1 = start; 0 = the question card (skipped in mole: rules were read in
+    // the Reading phase, only the answers get called).
+    state = {
+      ...state,
+      phase: 'readout',
+      readoutIdx: isMole ? 1 : 0,
+      cursor: 0,
+      handoffKind: isMole ? 'molevote' : 'vote',
+      timerEndsAt: null, // the readout has no hard per-card timer
+    };
+    play('slide');
+    emit();
+    return;
+  }
+  // no host: classic flow — mole mode: the hunt goes to EVERYONE in order —
+  // including the Mole, so nobody can tell who skipped a turn. The Mole's
+  // accusation still doesn't count (scoreMoleRound only tallies the hunters).
   state = {
     ...state,
     phase: 'handoff',
     cursor: 0,
     handoffKind: isMole ? 'molevote' : 'vote',
+    timerEndsAt: null,
+  };
+  play('pop');
+  emit();
+}
+
+/** Host taps "next answer" on the readout relay: advance one slot. */
+export function readoutNext() {
+  if (state.phase !== 'readout' || !state.round) return;
+  state = { ...state, readoutIdx: state.readoutIdx + 1 };
+  play('tick');
+  emit();
+}
+
+/** Host finished calling the last answer: go to the votes/hunt.
+ *  The UI knows when the card is the last one (it owns the display count),
+ *  so the store just needs to hand off. */
+export function readoutDone() {
+  if (state.phase !== 'readout') return;
+  state = {
+    ...state,
+    phase: 'handoff',
+    cursor: 0,
+    handoffKind: state.handoffKind === 'molevote' ? 'molevote' : 'vote',
+    readoutIdx: -1,
     timerEndsAt: null,
   };
   play('pop');

@@ -48,9 +48,11 @@ export const TimerRing = memo(function TimerRing({ endsAt, totalSeconds, size = 
           transform={`rotate(-90 ${inner / 2} ${inner / 2})`}
         />
       </Svg>
-      <Text style={[styles.num, { fontSize: size * 0.32, color: expired ? Palette.coral : Palette.ink }]}>
-        {expired ? 'GO!' : remainingSec}
-      </Text>
+      <View style={{ position: 'absolute', top: border, left: border, right: border, bottom: border, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={[styles.num, { fontSize: size * 0.32, color: expired ? Palette.coral : Palette.ink }]} numberOfLines={1}>
+          {expired ? 'GO!' : remainingSec}
+        </Text>
+      </View>
     </View>
   );
 });

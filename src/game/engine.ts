@@ -347,7 +347,7 @@ export function scoreMoleRound(round: RoundState, players: Player[]): MoleResult
   };
 }
 
-export function makeGame(players: Player[], config: GameConfig, deck: Question[], moleDeck: MolePair[]): GameState {
+export function makeGame(players: Player[], config: GameConfig, deck: Question[], moleDeck: MolePair[], hostId?: string | null): GameState {
   const isMole = config.mode === 'mole';
   const isWords = config.mode === 'words';
   const round = isMole
@@ -366,5 +366,7 @@ export function makeGame(players: Player[], config: GameConfig, deck: Question[]
     cursor: 0,
     handoffKind: 'guess',
     timerEndsAt: null,
+    hostId: hostId ?? null,
+    readoutIdx: -1,
   };
 }

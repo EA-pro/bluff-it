@@ -5,6 +5,7 @@ export type Phase =
   | 'handoff'    // "hand the phone to X" interstitial before a relay turn
   | 'guess'      // relay: one player types a secret number
   | 'reveal'     // all guesses shown (anonymous or named) + discussion
+  | 'readout'    // host relay: question (non-mole) + every answer called one by one
   | 'vote'       // relay (classic): each player taps the answer they think is true
   | 'molevote'   // relay (mole): each player accuses who they think is the Mole
   | 'anticipation' // "the answer shows up soon…" + big 3-2-1 countdown
@@ -141,6 +142,12 @@ export interface GameState {
   cursor: number;
   handoffKind: HandoffKind;
   timerEndsAt: number | null;
+  /** The Game Host (picked in setup): reads the question aloud (non-mole) and
+   *  calls the answers one by one during the discussion. */
+  hostId?: string | null;
+  /** Readout relay position: -1 = not started, 0 = question card (non-mole),
+   *  then one slot per answer card (in round.optionOrder). */
+  readoutIdx: number;
   result?: {
     truth: number;
     unit?: string;

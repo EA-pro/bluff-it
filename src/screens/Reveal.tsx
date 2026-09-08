@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated, ScrollView, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import TimerRing from '@/components/TimerRing';
 import AvatarFace from '@/components/AvatarFace';
@@ -24,8 +24,11 @@ const LETTER_COLORS = ['#FF5A5F', '#38BDF8', '#FFC53D', '#7ED957', '#A78BFA', '#
  * Mole: the same board WITHOUT the truth card, and every card shows WHO
  * wrote it (always on — the names ARE the evidence for the hunt).
  *
- * Card sizes are fluid: a flexbox grid sized from the window width, so the
- * board always fills the screen cleanly on any phone (2 or 3 columns).
+ * Layout: the question banner and the bottom button are FIXED, and the card
+ * grid sits in a ScrollView — on a phone the grid is bigger than one screen
+ * with 5+ answers, and centering a fixed-size container is exactly how the
+ * question got clipped and the last row got hidden. Now everything is
+ * readable: scroll to argue, banner always visible, cards stay large.
  */
 export default function Reveal() {
   const game = useGame();
@@ -89,28 +92,14 @@ export default function Reveal() {
       .filter((c) => (isMole ? !c.isTruth : isWords ? c.textValue != null : c.value != null));
   }, [round, players, isMole, isWords]);
 
-  // fluid grid: pick the layout (2 or 3 columns) whose cards end up LARGEST,
-  // and derive an exact card HEIGHT from the window so the grid can never
-  // overflow into the question banner or the button below — on any phone.
-  const { height } = useWindowDimensions();
-  const qBannerEstimate = isMole ? 132 : isWords ? 118 : 108; // label + 2-line question (+ notes)
-  const reservedH = 118 + 64 + qBannerEstimate + 142; // top row + title/sub + qBanner + bottom
-  const layout = useMemo(() => {
-    const n = cards.length;
-    let best = { cols: 2, rows: 1, cardH: 120, cardW: 140 };
-    for (const cols of [2, 3]) {
-      const rows = Math.max(1, Math.ceil(n / cols));
-      const cardW = Math.floor((width - 28 - (cols - 1) * 10) / cols) - 10;
-      const availH = height - reservedH - (rows - 1) * 10;
-      let cardH = Math.floor(availH / rows) - 10;
-      cardH = Math.max(70, Math.min(cardH, 170));
-      const score = Math.min(cardH, cardW);
-      if (score > Math.min(best.cardH, best.cardW)) best = { cols, rows, cardH, cardW };
-    }
-    return best;
-  }, [cards.length, width, height, reservedH]);
-  const tight = layout.cardH < 96;
+  // Layout: fixed, readable cards in a scrollable grid. Columns grow with
+  // the answer count; the ScrollView takes whatever room is left, so the
+  // board can never push the question banner off-screen or hide the last row.
+  const n = cards.length;
+  const cols = n >= 6 ? 3 : 2;
+  const cardH = cols === 3 ? 96 : 112;
   const sm = width < 380;
+  const tight = cardH < 100;
 
   if (!round) return null;
 
@@ -134,8 +123,8 @@ export default function Reveal() {
           <TimerRing endsAt={timerEndsAt} totalSeconds={discussSeconds} />
         </View>
 
-        {/* the discussion board — fully static, everything fits on one screen */}
-        <View style={styles.boardArea}>
+        {/* the discussion board — question banner + button stay fixed;
+            the card grid scrolls when it's bigger than one phone screen */}
         <Text style={[styles.title, { fontSize: sm ? 18 : 24 }]}>
           {isMole
             ? t('reveal_title_mole')
@@ -151,7 +140,7 @@ export default function Reveal() {
               : t('reveal_sub_classic')}
         </Text>
 
-        {/* the actual question, up top so the group can argue about it */}
+        {/* the actual question — ALWAYS visible, pinned above the cards */}
         <View style={styles.qBanner}>
           <Text style={styles.qBannerLabel}>{t('reveal_q')}</Text>
           <Text style={styles.qBannerTxt} numberOfLines={2} adjustsFontSizeToFit>
@@ -164,6 +153,11 @@ export default function Reveal() {
           ) : null}
         </View>
 
+        <ScrollView
+          style={styles.boardArea}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.cardsWrap}>
           {cards.map((c, i) => (
             <Animated.View
@@ -171,8 +165,8 @@ export default function Reveal() {
               style={[
                 styles.cell,
                 {
-                  flexBasis: `${100 / layout.cols}%`,
-                  height: layout.cardH + 10,
+                  flexBasis: `${100 / cols}%`,
+                  height: cardH + 10,
                   transform: [
                     { scale: bounceFor(c.key) },
                     { rotate: `${(c.key.charCodeAt(0) % 2 === 0 ? -1 : 1) * 0.8}deg` },
@@ -210,7 +204,7 @@ export default function Reveal() {
             </Animated.View>
           ))}
         </View>
-        </View>
+        </ScrollView>
 
         <View style={styles.bottom}>
           <BigButton
@@ -281,9 +275,11 @@ const styles = StyleSheet.create({
     color: Palette.grape,
     marginTop: 1,
   },
-  boardArea: { flex: 1, justifyContent: 'center' },
-  // fluid flexbox grid — no hardcoded widths
-  cardsWrap: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', alignContent: 'center', paddingHorizontal: 14, gap: 10 },
+  boardArea: { flex: 1 },
+  // fluid flexbox grid — no hardcoded widths. Natural height inside the
+  // ScrollView (no flex:1, no justify-center) so the board scrolls when it
+  // exceeds one phone screen.
+  cardsWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 14, paddingTop: 6, paddingBottom: 10, gap: 10 },
   cell: { flexGrow: 1, flexShrink: 1, padding: 5 },
   card: {
     flex: 1,

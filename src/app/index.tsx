@@ -8,6 +8,7 @@ import Reading from '@/screens/Reading';
 import Handoff from '@/screens/Handoff';
 import Guess from '@/screens/Guess';
 import Reveal from '@/screens/Reveal';
+import Readout from '@/screens/Readout';
 import Vote from '@/screens/Vote';
 import MoleVote from '@/screens/MoleVote';
 import Anticipation from '@/screens/Anticipation';
@@ -28,7 +29,7 @@ import { isUnlocked } from '@/game/premium';
  * returns to the hub. A password GATE sits in front of everything.
  */
 const TABS: TabId[] = ['shop', 'home', 'profile'];
-const GAME_PHASES = new Set(['setup', 'reading', 'handoff', 'guess', 'reveal', 'vote', 'molevote', 'anticipation', 'result', 'end']);
+const GAME_PHASES = new Set(['setup', 'reading', 'handoff', 'guess', 'reveal', 'readout', 'vote', 'molevote', 'anticipation', 'result', 'end']);
 
 export default function Index() {
   // snapshot the unlock flag once per mount (React-Compiler safe, SSR safe)
@@ -51,6 +52,7 @@ export default function Index() {
           {phase === 'handoff' && <Handoff />}
           {phase === 'guess' && <Guess />}
           {phase === 'reveal' && <Reveal />}
+          {phase === 'readout' && <Readout />}
           {phase === 'vote' && <Vote />}
           {phase === 'molevote' && <MoleVote />}
           {phase === 'anticipation' && <Anticipation />}
