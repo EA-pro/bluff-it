@@ -31,7 +31,7 @@ export const ADSENSE_PUBLISHER_ID = 'ca-pub-9890103364432866';
 /** Per-screen ad-unit "slot" numbers (the 7-8 digit ID from each AdSense unit). Empty = that screen has no ad. */
 export const AD_UNITS = {
   /** HOME hub — the main menu screen (highest visibility). */
-  home: '',
+  home: '2697297510',
   /** GAME OVER — the end-of-game screen. */
   end: '',
   /** SHOP tab — idle browsing, good for passive impressions. */
