@@ -1,0 +1,17 @@
+{
+  "name": "BLUFF IT",
+  "short_name": "BLUFF IT",
+  "description": "The number party game — pass the phone, guess the number, don't get caught.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#151A2E",
+  "background_color": "#FFF8F0",
+  "icons": [
+    { "src": "logo192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "logo512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "maskable512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
