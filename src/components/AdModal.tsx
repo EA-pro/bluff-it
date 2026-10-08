@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, Pressable, Animated, Easing, Modal } from 'reac
 import { Palette, Radius, Shadow } from '@/constants/theme';
 import { play } from '@/game/sound';
 import { randomCreative, type AdCreative } from '@/game/ads';
+import AdSlot from '@/components/AdSlot';
+import { isAdReady } from '@/ad/adsense';
 
 interface Props {
   visible: boolean;
@@ -73,13 +75,20 @@ export default function AdModal({ visible, onClose, rewardLabel, onClaim }: Prop
             </View>
           </View>
 
-          {/* the "creative" */}
-          <View style={styles.creative}>
-            <Text style={styles.creativeEmoji}>{creative.emoji}</Text>
-            <Text style={styles.brand}>{creative.brand}</Text>
-            <Text style={styles.headline}>{creative.headline}</Text>
-            <Text style={styles.sub}>{creative.sub}</Text>
-          </View>
+          {/* the "creative": a REAL AdSense impression when configured,
+              otherwise the fake brand creative (no-account fallback) */}
+          {isAdReady('rewarded') ? (
+            <View style={styles.creativeReal}>
+              <AdSlot slot="rewarded" minHeight={220} style={{ alignSelf: 'center', maxWidth: 340, width: '100%' }} />
+            </View>
+          ) : (
+            <View style={styles.creative}>
+              <Text style={styles.creativeEmoji}>{creative.emoji}</Text>
+              <Text style={styles.brand}>{creative.brand}</Text>
+              <Text style={styles.headline}>{creative.headline}</Text>
+              <Text style={styles.sub}>{creative.sub}</Text>
+            </View>
+          )}
 
           {/* countdown bar */}
           <View style={styles.barTrack}>
@@ -141,6 +150,14 @@ const styles = StyleSheet.create({
     padding: 26,
     gap: 6,
     backgroundColor: '#FFF9EE',
+  },
+  creativeReal: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    gap: 6,
+    backgroundColor: '#FFF9EE',
+    width: '100%',
   },
   creativeEmoji: { fontSize: 74 },
   brand: { color: Palette.ink, fontSize: 14, fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase' },

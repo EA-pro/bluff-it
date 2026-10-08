@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import BigButton from '@/components/BigButton';
 import AvatarFace from '@/components/AvatarFace';
 import Confetti from '@/components/Confetti';
+import AdSlot from '@/components/AdSlot';
 import { useGame } from '@/game/useStore';
 import { resetAll, goSetup } from '@/game/store';
 import { Palette, Gradients } from '@/constants/theme';
@@ -60,6 +61,9 @@ export default function End() {
             );
           })}
         </View>
+
+        {/* real AdSense unit — renders nothing until a publisher ID is set */}
+        <AdSlot slot="end" minHeight={90} style={{ alignSelf: 'center', maxWidth: 340 }} />
 
         <View style={styles.btnRow}>
           <BigButton label="Play again! 🔄" variant="soft" small onPress={goSetup} style={{ flex: 1 }} />

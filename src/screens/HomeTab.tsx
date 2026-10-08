@@ -10,6 +10,7 @@ import { usePremium, molePlayUsedToday } from '@/game/premium';
 import { useAds, grantMolePass, useMolePass, completeAd } from '@/game/ads';
 import PremiumSheet from '@/components/PremiumSheet';
 import AdModal from '@/components/AdModal';
+import AdSlot from '@/components/AdSlot';
 import SettingsSheet from '@/components/SettingsSheet';
 import type { TabId } from '@/components/TabBar';
 import { t } from '@/i18n';
@@ -184,6 +185,11 @@ export default function HomeTab({ onTab }: { onTab: (t: TabId) => void }) {
         <BigButton label={t('home_play_now')} onPress={playNow} variant="end" style={styles.playBtn} />
         <Text style={styles.foot}>{t('home_foot')}</Text>
 
+        {/* real AdSense unit — renders nothing until a publisher ID is set in src/ad/adsense.ts */}
+        <View style={styles.adWrap}>
+          <AdSlot slot="home" minHeight={90} />
+        </View>
+
         <Pressable style={styles.settingsBtn} onPress={() => setShowSettings(true)} hitSlop={6}>
           <Text style={styles.settingsTxt}>⚙️ {t('home_settings')}</Text>
         </Pressable>
@@ -279,6 +285,7 @@ const styles = StyleSheet.create({
   modeAdTag: { fontSize: 16, backgroundColor: '#fff', borderRadius: 10, borderWidth: 2, borderColor: '#1B1F3B', padding: 3 },
   playBtn: { width: '100%', marginTop: 22, height: 66, borderRadius: 22 },
   foot: { marginTop: 12, fontSize: 11.5, fontWeight: '800', color: 'rgba(255,255,255,0.85)' },
+  adWrap: { marginTop: 14, alignItems: 'center', alignSelf: 'center', maxWidth: 340 },
   settingsBtn: {
     marginTop: 16,
     backgroundColor: 'rgba(255,255,255,0.7)',
