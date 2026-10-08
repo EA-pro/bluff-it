@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AvatarFace from '@/components/AvatarFace';
 import PremiumSheet from '@/components/PremiumSheet';
-import AdSlot from '@/components/AdSlot';
 import { Palette, Gradients, Radius, Shadow } from '@/constants/theme';
 import { play } from '@/game/sound';
 import { usePremium } from '@/game/premium';
@@ -182,10 +181,6 @@ export default function ShopTab() {
             </Pressable>
           )}
         </LinearGradient>
-
-        {/* real AdSense unit — renders nothing until a publisher ID is set */}
-        <AdSlot slot="shop" minHeight={90} style={{ alignSelf: 'center', maxWidth: 340, marginTop: 14 }} />
-
         <View style={{ height: 120 }} />
       </ScrollView>
 
